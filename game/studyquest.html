@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スタディクエスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Noto+Music&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { overflow: auto; }
+  body { min-height: 100%; background: linear-gradient(180deg, #241a52 0%, #5b3f9e 45%, #f2a7c9 100%); background-attachment: fixed; }
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .hub { position: relative; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(14px, 3vh, 28px); padding: 24px 16px 32px; }
+  .hub-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(44px, 8.5vw, 104px); line-height: 1; letter-spacing: .02em; color: #ffe27a; text-shadow: 0 6px 0 #c2410c, 0 10px 0 rgba(30,10,60,.45); -webkit-text-stroke: 3px #fff6d6; paint-order: stroke fill; animation: titlein .9s cubic-bezier(.3,1.6,.5,1) both; text-align: center; }
+  .hub-title small { display: block; font-family: var(--body); font-weight: 900; font-size: clamp(14px, 1.8vw, 20px); color: #fff; -webkit-text-stroke: 0; text-shadow: 0 2px 0 rgba(30,10,60,.5); letter-spacing: .3em; margin-bottom: 8px; }
+  @keyframes titlein { from { transform: translateY(-40px) scale(.6); opacity: 0; } }
+  .lead { margin: 0; color: #fff; font-weight: 900; font-size: clamp(15px, 2vw, 20px); text-shadow: 0 2px 0 rgba(30,10,60,.5); }
+  .cards { display: flex; gap: clamp(12px, 2.4vw, 28px); flex-wrap: wrap; justify-content: center; }
+  .card { --c: #ff8fbf; width: clamp(220px, 26vw, 290px); background: var(--paper); border: 5px solid var(--ink); border-radius: 30px; padding: 14px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 10px 0 rgba(30,10,60,.45); transition: transform .15s, box-shadow .15s; text-align: center; color: var(--ink); font-family: var(--body); }
+  .card:hover, .card.sel { transform: translateY(-10px) rotate(-1deg); box-shadow: 0 18px 0 rgba(30,10,60,.45), 0 0 0 6px var(--c); }
+  .card:focus-visible { outline: none; box-shadow: 0 18px 0 rgba(30,10,60,.45), 0 0 0 6px var(--gold); }
+  .card .subject { font-weight: 900; font-size: 14px; letter-spacing: .15em; color: #fff; background: var(--c); border: 3px solid var(--ink); border-radius: 999px; padding: 2px 14px; }
+  .card img { height: clamp(150px, 26vh, 230px); max-width: 100%; object-fit: contain; filter: drop-shadow(0 6px 0 rgba(58,42,77,.2)); }
+  .card.sel img { animation: bob .7s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-10px); } }
+  .card .name { font-family: var(--display); font-size: clamp(19px, 2.1vw, 24px); line-height: 1.1; white-space: nowrap; }
+  .card .desc { font-size: 14px; font-weight: 700; color: #7a6890; min-height: 2.8em; line-height: 1.4; }
+  .card .best { font-size: 13px; font-weight: 900; color: var(--pink-deep); background: #fff0f7; border-radius: 12px; padding: 4px 10px; }
+  .card .go { margin-top: 4px; font-family: var(--display); font-size: 20px; color: #fff; background: var(--c); border: 3px solid var(--ink); border-radius: 999px; padding: 8px 26px; box-shadow: 0 5px 0 rgba(58,42,77,.4); }
+  .keys { color: #fff; font-weight: 700; font-size: 14px; text-shadow: 0 2px 0 rgba(30,10,60,.5); }
+  .keys kbd { background: #fff; color: var(--ink); }
+  @media (prefers-reduced-motion: reduce) { .card.sel img, .hub-title { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<main class="hub">
+  <h1 class="hub-title"><small>まなびの ぼうけん</small>スタディクエスト</h1>
+  <p class="lead">あそびたい ぼうけんを えらんでね！</p>
+  <div class="cards" id="cards">
+    <button class="card" type="button" data-href="sansu.html" data-rec="chona-sansu:records" style="--c:#ff7aa8">
+      <span class="subject">さんすう</span>
+      <img id="imgChona" alt="ちょなちゃん">
+      <span class="name">ちょなちゃん</span>
+      <span class="desc">まほうで たたかう！<br>たしざん・ひきざん</span>
+      <span class="best"></span>
+      <span class="go">はじめる</span>
+    </button>
+    <button class="card" type="button" data-href="kanji.html" data-rec="kanji-ken:records" style="--c:#4a7fd6">
+      <span class="subject">かんじ</span>
+      <img id="imgKen" alt="けんしの かずぅ">
+      <span class="name">けんし かずぅ</span>
+      <span class="desc">けんで たたかう！<br>かんじの かきとり</span>
+      <span class="best"></span>
+      <span class="go">はじめる</span>
+    </button>
+    <button class="card" type="button" data-href="music.html" data-rec="music-dancer:records" style="--c:#b06aff">
+      <span class="subject">おんがく</span>
+      <img id="imgDancer" alt="おどりこの みなり">
+      <span class="name">おどりこ みなり</span>
+      <span class="desc">うたと ダンスで たたかう！<br>おんぷの なまえ</span>
+      <span class="best"></span>
+      <span class="go">はじめる</span>
+    </button>
+  </div>
+  <p class="keys"><kbd>←</kbd> <kbd>→</kbd> で えらんで <kbd>Enter</kbd>、または クリック</p>
+</main>
+
+<script src="data/images.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/placeholders.js"></script>
+<script>
+'use strict';
+const cards = [...document.querySelectorAll('.card')];
+let sel = 0;
+const select = (i) => { sel = (i + cards.length) % cards.length; cards.forEach((c, k) => c.classList.toggle('sel', k === sel)); cards[sel].focus({ preventScroll: true }); };
+const go = (card) => { location.href = card.dataset.href + '#start'; };
+cards.forEach((c, i) => {
+  c.addEventListener('click', () => go(c));
+  c.addEventListener('mouseenter', () => select(i));
+  // これまでの いちばん いい きろく
+  let best = null;
+  try { best = (JSON.parse(localStorage.getItem(c.dataset.rec)) || []).filter((r) => typeof r.seconds === 'number').sort((a, b) => a.seconds - b.seconds)[0]; } catch { best = null; }
+  c.querySelector('.best').textContent = best ? `さいこう タイム：${Math.floor(best.seconds / 60)}ふん ${String(best.seconds % 60).padStart(2, '0')}びょう` : 'まだ クリア していないよ';
+});
+addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') { select(sel + 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { select(sel - 1); e.preventDefault(); }
+  if (e.key === 'Enter') { go(cards[sel]); e.preventDefault(); }
+});
+select(0);
+
+// キャラの え：かいた え が あれば それ、なければ かわりの え
+const placeholder = (draw) => {
+  const cnv = document.createElement('canvas'); cnv.width = 260; cnv.height = 300;
+  const c = cnv.getContext('2d'); c.translate(125, 292); draw(c, 270, 0.6);
+  return cnv.toDataURL();
+};
+document.getElementById('imgKen').src = placeholder(drawSwordsman);
+document.getElementById('imgDancer').src = placeholder(drawDancer);
+const IM = window.IMAGES || {};
+[['主人公', 'imgChona'], ['剣士', 'imgKen'], ['踊り子', 'imgDancer']].forEach(async ([folder, id]) => {
+  const item = (IM[folder] || [])[0];
+  if (!item) return;
+  const s = await loadImage(item);
+  if (s) document.getElementById(id).src = s.canvas.toDataURL();
+});
+
+// ほしぞら
+const sky = document.getElementById('sky'), g = sky.getContext('2d');
+let stars = [];
+const size = () => {
+  sky.width = innerWidth * devicePixelRatio; sky.height = innerHeight * devicePixelRatio;
+  stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random() * 0.7, r: Math.random() * 1.8 + 0.6, p: Math.random() * 6, glyph: Math.random() < 0.1 ? ['♪', '＋', '字', '♫'][Math.floor(Math.random() * 4)] : null }));
+};
+addEventListener('resize', size); size();
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+(function draw(t = 0) {
+  g.clearRect(0, 0, sky.width, sky.height);
+  for (const s of stars) {
+    g.globalAlpha = still ? 0.8 : 0.35 + 0.6 * Math.abs(Math.sin(t / 900 + s.p));
+    g.fillStyle = '#fff7d6';
+    if (s.glyph) { g.font = `900 ${16 * devicePixelRatio}px "Noto Music", "Zen Maru Gothic", sans-serif`; g.fillText(s.glyph, s.x * sky.width, s.y * sky.height); }
+    else { g.beginPath(); g.arc(s.x * sky.width, s.y * sky.height, s.r * devicePixelRatio, 0, 7); g.fill(); }
+  }
+  if (!still) requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

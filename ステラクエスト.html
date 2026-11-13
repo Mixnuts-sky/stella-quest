@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ステラクエスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="game/css/style.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1240; }
+  /* タイトルの え（3:2）を がめんに おさめて、その うえに スロットを かさねる */
+  .stage { position: absolute; inset: 0; display: grid; place-items: center; }
+  .art { position: relative; width: min(100vw, 150vh); aspect-ratio: 3 / 2; background: center / cover no-repeat; }
+  /* えに かいてある ボタン（はじめから・おわる など）を かくす パネル */
+  .panel { position: absolute; left: 55%; top: 44%; width: 32.5%; height: 46%; box-sizing: border-box; padding: 1.4vmin 1.6vmin; border-radius: 22px; background: linear-gradient(160deg, #3c288c, #7846b4); border: 3px solid #ffe9a8; box-shadow: 0 0 0 3px rgba(255,255,255,.35), 0 10px 30px rgba(20,10,60,.5); display: flex; flex-direction: column; gap: 1.2vmin; }
+  .panel-title { text-align: center; font-family: var(--display); font-size: 2.3vmin; color: #ffe27a; letter-spacing: .1em; text-shadow: 0 2px 0 rgba(30,10,60,.6); }
+  .slots { display: flex; flex-direction: column; gap: 1.2vmin; flex: 1; }
+  .slot { position: relative; flex: 1; display: flex; align-items: center; gap: 10px; padding: 1.1vmin 1.4vmin; border-radius: 16px; border: 3px solid #fff; background: rgba(255,250,243,.95); box-shadow: 0 5px 0 rgba(40,20,80,.35), 0 0 0 3px rgba(130,90,220,.55); cursor: pointer; font-family: var(--body); color: var(--ink); text-align: left; transition: transform .12s; }
+  .slot:hover, .slot:focus-visible { transform: translateY(-3px) scale(1.02); outline: none; box-shadow: 0 8px 0 rgba(40,20,80,.35), 0 0 0 4px #ffd84a; }
+  .slot .no { flex: none; width: 5.2vmin; height: 5.2vmin; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-size: 2.6vmin; color: #fff; background: linear-gradient(135deg, #ff8fbf, #8a5cd1); border: 2px solid #fff; }
+  .slot .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .2vmin; }
+  .slot .l1 { font-weight: 900; font-size: 2.2vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slot .l2 { font-weight: 700; font-size: 1.6vmin; color: #7a6890; white-space: nowrap; display: flex; gap: 1.2vmin; align-items: center; }
+  .slot .l2 img { width: 2vmin; height: 2vmin; vertical-align: -0.3vmin; }
+  .slot.empty .l1 { color: #e2588f; }
+  .slot .del { flex: none; font-family: var(--body); font-weight: 900; font-size: 1.5vmin; color: #9a8aac; background: #f2edf6; border: 2px solid #d9cfe3; border-radius: 999px; padding: .6vmin 1.2vmin; cursor: pointer; }
+  .slot .del:hover { color: #e8203c; border-color: #e8203c; }
+  .confirm { position: absolute; inset: 0; border-radius: 13px; background: rgba(255,240,245,.98); display: flex; align-items: center; justify-content: center; gap: 1.2vmin; font-weight: 900; font-size: 1.9vmin; color: #e8203c; }
+  .confirm button { font-family: var(--body); font-weight: 900; font-size: 1.8vmin; border-radius: 999px; padding: .6vmin 1.8vmin; border: 2px solid var(--ink); cursor: pointer; }
+  .confirm .yes { background: #e8203c; color: #fff; }
+  .confirm .no2 { background: #fff; color: var(--ink); }
+  .modepick { color: var(--ink); background: rgba(240,248,255,.98); font-size: 1.5vmin; gap: .6vmin; white-space: nowrap; }
+  .modepick button { font-size: 1.55vmin; padding: .6vmin 1vmin; background: #fff; color: var(--ink); white-space: nowrap; }
+  .modepick button.on, .modepick button:hover { background: #ffd84a; }
+  .slot .mode { display: inline-block; font-size: 1.4vmin; color: #fff; background: #8a5cd1; border-radius: 999px; padding: 0 .9vmin; margin-right: .6vmin; vertical-align: .2vmin; }
+  .slot .mode.hoikuen { background: #ff8ac0; }
+  .cheat-msg { text-align: center; font-weight: 900; font-size: 1.9vmin; line-height: 1.4; color: #fff3a0; background: rgba(255,120,200,.35); border: 2px dashed #ffe27a; border-radius: 12px; padding: .5vmin 1vmin; animation: popin .4s; }
+  .keyhint { white-space: nowrap; text-align: center; color: #fff; font-weight: 900; font-size: 1.5vmin; text-shadow: 0 2px 0 rgba(30,10,60,.7); }
+  .keyhint kbd { display: inline; min-width: 0; padding: 0 .5vmin; background: #fff; color: var(--ink); font-size: 1.3vmin; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="art" id="art">
+    <div class="panel">
+      <div class="panel-title">⭐ ぼうけんの きろく ⭐</div>
+      <div class="slots" id="slots"></div>
+      <div class="keyhint"><kbd>↑</kbd><kbd>↓</kbd> で えらんで <kbd>Enter</kbd>、または クリック</div>
+    </div>
+  </div>
+</div>
+
+<script src="game/data/stella_images.js"></script>
+<script src="game/js/stella_save.js"></script>
+<script>
+'use strict';
+const IMG = window.STELLA_IMAGES || {};
+document.getElementById('art').style.backgroundImage = `url("${IMG.title}")`;
+let sel = 0;
+
+function renderSlots() {
+  const box = document.getElementById('slots');
+  box.innerHTML = '';
+  for (let n = 1; n <= SAVE_SLOTS; n++) {
+    const d = loadSlot(n);
+    const b = document.createElement('div');
+    b.className = 'slot' + (d ? '' : ' empty');
+    b.tabIndex = 0;
+    b.dataset.n = n;
+    b.setAttribute('role', 'button');
+    if (d) {
+      const s = slotSummary(d);
+      b.innerHTML = `<span class="no">${n}</span><span class="info"><span class="l1"><span class="mode ${d.mode || 'grade1'}">${s.mode}</span>${s.progress}・${s.place}</span>
+        <span class="l2"><span><img src="${IMG.arca}" alt="アルカ"> ${s.arca}</span><span>⏱ ${s.time}</span><span>${s.date}</span></span></span>
+        <button class="del" type="button">けす</button>`;
+    } else {
+      b.innerHTML = `<span class="no">${n}</span><span class="info"><span class="l1">あたらしく はじめる</span><span class="l2">セーブ データ なし</span></span>`;
+    }
+    b.addEventListener('click', (e) => {
+      if (e.target.closest('.del')) { askDelete(b, n); e.stopPropagation(); return; }
+      if (e.target.closest('.confirm')) return;
+      if (d) start(n); else askMode(b, n);
+    });
+    b.addEventListener('mouseenter', () => focusSlot(n - 1));
+    box.appendChild(b);
+  }
+  focusSlot(sel);
+}
+
+// セーブを けす（ブラウザの confirm は つかわず、スロットの うえで かくにん）
+function askDelete(el, n) {
+  if (el.querySelector('.confirm')) return;
+  const c = document.createElement('div');
+  c.className = 'confirm';
+  c.innerHTML = 'ほんとうに けす？ <button class="yes" type="button">けす</button><button class="no2" type="button">やめる</button>';
+  c.querySelector('.yes').addEventListener('click', (e) => { e.stopPropagation(); deleteSlot(n); renderSlots(); });
+  c.querySelector('.no2').addEventListener('click', (e) => { e.stopPropagation(); c.remove(); });
+  el.appendChild(c);
+}
+
+// あたらしく はじめる ときは モードを えらぶ（スロットの うえ）
+function askMode(el, n) {
+  if (el.querySelector('.confirm')) return;
+  const c = document.createElement('div');
+  c.className = 'confirm modepick';
+  c.innerHTML = 'どっちで あそぶ？ <button class="on" type="button" data-mode="grade1">しょうがく 1ねんせい</button><button type="button" data-mode="hoikuen">ほいくえん</button>';
+  c.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); start(n, b.dataset.mode); }));
+  el.appendChild(c);
+}
+
+function focusSlot(i) {
+  const slots = [...document.querySelectorAll('.slot')];
+  sel = (i + slots.length) % slots.length;
+  slots[sel].focus({ preventScroll: true });
+}
+
+// あいている スロット → あたらしく はじめる、データあり → つづきから
+// うらわざ：タイトルで ↑↑↓↓←→←→ → つぎに えらんだ ぼうけん が 9999アルカ・なんいど5 まで クリア に なる
+const CHEAT_KEYS = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
+let cheatPos = 0, cheatOn = false;
+function cheatKey(key) {
+  cheatPos = key === CHEAT_KEYS[cheatPos] ? cheatPos + 1 : key === CHEAT_KEYS[0] ? 1 : 0;
+  if (cheatPos < CHEAT_KEYS.length || cheatOn) return;
+  cheatOn = true; cheatPos = 0;
+  const m = document.createElement('div');
+  m.className = 'cheat-msg'; m.id = 'cheatMsg';
+  m.textContent = '✨ うらわざ はつどう！ つぎに えらんだ ぼうけんは 9999アルカ・なんいど5 まで クリア！';
+  document.getElementById('slots').before(m);
+  [523, 659, 784, 1046].forEach((f, i) => { try { const a = new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; g.gain.value = 0.08; o.connect(g); g.connect(a.destination); o.start(a.currentTime + i * 0.09); o.stop(a.currentTime + i * 0.09 + 0.12); } catch { /* おと なし */ } });
+}
+function start(n, mode) { location.href = `game/stella.html#slot${n}` + (mode ? `&mode=${mode}` : '') + (cheatOn ? '&cheat=1' : ''); }
+
+addEventListener('keydown', (e) => {
+  if (!e.repeat) cheatKey(e.key);
+  const pickBox = document.querySelector('.modepick');
+  if (pickBox) { // モードえらび：← → で えらんで Enter
+    const bs = [...pickBox.querySelectorAll('button')], i = bs.findIndex((b) => b.classList.contains('on'));
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { bs[i].classList.remove('on'); bs[(i + 1) % 2].classList.add('on'); e.preventDefault(); }
+    if (e.key === 'Enter') { bs[i].click(); e.preventDefault(); }
+    if (e.key === 'Escape') pickBox.remove();
+    return;
+  }
+  if (document.querySelector('.confirm')) return;
+  if (e.key === 'ArrowDown') { focusSlot(sel + 1); e.preventDefault(); }
+  if (e.key === 'ArrowUp') { focusSlot(sel - 1); e.preventDefault(); }
+  if (e.key === 'Enter') { const el = document.querySelectorAll('.slot')[sel]; if (el.classList.contains('empty')) askMode(el, sel + 1); else start(sel + 1); e.preventDefault(); }
+});
+renderSlots();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# GitHub Pages に だす のは あそぶ ための ファイル だけ
+# （原画 デザイン/・テスト tools/・ドキュメント docs/・.claude/・漢字/ は ださない）
+/*
+!/.gitignore
+!/.nojekyll
+!/index.html
+!/ステラクエスト.html
+!/game/

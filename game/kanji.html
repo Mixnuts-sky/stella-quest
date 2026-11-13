@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>かずぅの かんじ ぼうけん</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/kanji.css">
+<script>
+  // game.js（きょうつうの しくみ）に わたす せってい
+  window.HERO_FOLDER = '剣士';
+  window.RECORD_KEY = 'kanji-ken:records';
+</script>
+</head>
+<body class="kanji">
+<div id="game">
+  <canvas id="cv"></canvas>
+
+  <!-- 上の じょうほう -->
+  <div id="hud" hidden>
+    <div class="hud-box lv">
+      <span class="cap">レベル</span>
+      <span id="lvnum" class="lvnum">1</span>
+      <span id="placeName" class="place"></span>
+    </div>
+    <div class="hud-box streaks">
+      <div class="row"><span class="cap">ボスまで</span><span id="okmarks" class="marks"></span></div>
+      <div class="row"><span class="cap">ミス</span><span id="ngmarks" class="marks"></span></div>
+    </div>
+    <button id="muteBtn" class="hud-btn" type="button">おと：オン</button>
+  </div>
+  <div id="bossNotice" class="boss-notice" hidden>ボスの けはい… すすんで みよう！</div>
+
+  <!-- ボス しゅつげん -->
+  <div id="bossWarn" class="boss-warn" hidden>
+    <div class="stripe top"></div>
+    <div class="warn-text">ボス しゅつげん！</div>
+    <div class="stripe bottom"></div>
+  </div>
+
+  <!-- タイトル -->
+  <div id="title" class="overlay title">
+    <a class="back-link" href="studyquest.html">← スタディクエスト</a>
+    <img id="titleChara" class="title-chara" alt="かずぅ">
+    <div class="title-text">
+      <h1>けんし かずぅの<br><span>かんじ ぼうけん</span></h1>
+      <p><kbd>→</kbd> を おすと みぎへ すすむよ。<br>
+         モンスターが でたら みぎの わくに マウスで かんじを かいて <kbd>Enter</kbd>！</p>
+      <div class="title-btns">
+        <button id="startBtn" class="big-btn" type="button">ぼうけんに でる</button>
+        <button id="weakBtn" class="sub-btn" type="button">にがて かんじ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- もんだい -->
+  <div id="quiz" data-avoid hidden>
+    <div id="monName" class="mon-name"></div>
+    <div id="wordBox" class="word-box"></div>
+    <div id="qmsg" class="qmsg"></div>
+    <button id="nextBtn" class="next-btn" type="button" hidden><kbd>Enter</kbd> で つぎへ</button>
+  </div>
+
+  <!-- かきとり -->
+  <div id="writePad" class="write-pad" data-avoid hidden>
+    <div class="pad-head"><span id="padTitle">ここに かいてね</span><span id="padCount">0かく</span></div>
+    <canvas id="padCanvas"></canvas>
+    <div class="pad-btns">
+      <button id="undoBtn" type="button">1かく けす</button>
+      <button id="clearBtn" type="button">ぜんぶ けす</button>
+      <button id="hintBtn" type="button">おてほん</button>
+      <button id="okBtn" class="ok" type="button">こたえる</button>
+    </div>
+  </div>
+  <div id="pad" hidden></div><!-- けいさんの テンキー（つかわない） -->
+
+  <button id="walkBtn" class="walk-btn" type="button" hidden>すすむ ▶</button>
+
+  <!-- にがて かんじ -->
+  <div id="weakList" class="overlay weak" hidden>
+    <div class="clear-card">
+      <div class="weak-title">にがて かんじ</div>
+      <p class="weak-lead">まちがえた かんじ です。3かい つづけて せいかい すると「こくふく」！</p>
+      <div id="weakItems" class="weak-items"></div>
+      <div class="title-btns">
+        <button id="weakClose" class="big-btn" type="button">とじる</button>
+        <button id="weakReset" class="sub-btn" type="button">きろくを けす</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ゲームクリア -->
+  <div id="clear" class="overlay clear" hidden>
+    <div class="clear-card">
+      <div class="clear-title">ゲーム クリア！</div>
+      <div class="clear-chars"><img id="clearHero" alt="かずぅ"><img id="clearCat" alt="にゃんこ"></div>
+      <div class="clear-stats">
+        <div>まちがえた かず<b id="clearMiss">0</b></div>
+        <div>クリア じかん<span id="clearTime"></span></div>
+      </div>
+      <div id="clearRank" class="clear-rank"></div>
+      <div class="rank-head">ランキング（まちがいが すくない じゅん）</div>
+      <ol id="rankList" class="rank-list"></ol>
+      <button id="againBtn" class="big-btn" type="button">タイトルへ</button>
+    </div>
+  </div>
+
+  <!-- レベルアップ -->
+  <div id="lvup" class="fx lvup" hidden>
+    <div class="fx-inner">
+      <div class="fx-title" id="upTitle">レベル<br>アップ！</div>
+      <img class="fx-chara" id="upChara" alt="">
+      <div class="fx-sub" id="upSub"></div>
+    </div>
+  </div>
+
+  <!-- やりなおし -->
+  <div id="lvdown" class="fx lvdown" hidden>
+    <div class="flash"></div>
+    <svg class="ghost g1" viewBox="0 0 100 120" aria-hidden="true"><path d="M10 60 C10 20 90 20 90 60 L90 110 L76 98 L63 110 L50 98 L37 110 L24 98 L10 110 Z" fill="#f4eefe"/><ellipse cx="36" cy="58" rx="7" ry="10" fill="#2a1840"/><ellipse cx="64" cy="58" rx="7" ry="10" fill="#2a1840"/><ellipse cx="28" cy="74" rx="7" ry="4" fill="#ffb3d1"/><ellipse cx="72" cy="74" rx="7" ry="4" fill="#ffb3d1"/><path d="M42 80 Q50 90 58 80" stroke="#2a1840" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+    <svg class="ghost g2" viewBox="0 0 100 120" aria-hidden="true"><path d="M10 60 C10 20 90 20 90 60 L90 110 L76 98 L63 110 L50 98 L37 110 L24 98 L10 110 Z" fill="#f4eefe"/><ellipse cx="36" cy="58" rx="7" ry="10" fill="#2a1840"/><ellipse cx="64" cy="58" rx="7" ry="10" fill="#2a1840"/><path d="M40 82 L60 82" stroke="#2a1840" stroke-width="4" stroke-linecap="round"/></svg>
+    <div class="fx-inner">
+      <div class="fx-title drip" id="downTitle">やり<br>なおし…</div>
+      <img class="fx-chara shiver" id="downChara" alt="">
+      <div class="fx-sub" id="downSub"></div>
+    </div>
+  </div>
+</div>
+
+<script src="data/images.js"></script>
+<script src="data/kanji_data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/game.js"></script>
+<script src="js/maze.js"></script>
+<script src="js/placeholders.js"></script>
+<script src="js/kanji_core.js"></script>
+<script src="js/kanji.js"></script>
+</body>
+</html>

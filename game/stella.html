@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ステラクエスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Klee+One:wght@600&family=Noto+Music&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/kanji.css">
+<link rel="stylesheet" href="css/music.css">
+<link rel="stylesheet" href="css/stella.css">
+<script>
+  // game.js（きょうつうの しくみ）に わたす せってい
+  window.HERO_FOLDER = '主人公';
+  window.RECORD_KEY = 'stella:records';
+</script>
+</head>
+<body class="stella">
+<div id="game">
+  <canvas id="cv"></canvas>
+
+  <!-- 上の じょうほう（game.js / maze.js が つかう） -->
+  <div id="hud" hidden>
+    <div class="hud-box lv">
+      <span class="cap">レベル</span>
+      <span id="lvnum" class="lvnum">1</span>
+      <span id="placeName" class="place"></span>
+    </div>
+    <div class="hud-box streaks">
+      <div class="row"><span class="cap">ボスまで</span><span id="okmarks" class="marks"></span></div>
+      <div class="row"><span class="cap">ミス</span><span id="ngmarks" class="marks"></span></div>
+    </div>
+    <button id="muteBtn" class="hud-btn" type="button">おと：オン</button>
+  </div>
+  <div id="bossNotice" class="boss-notice" hidden></div>
+
+  <div id="bossWarn" class="boss-warn" hidden>
+    <div class="stripe top"></div>
+    <div class="warn-text">ボス しゅつげん！</div>
+    <div class="stripe bottom"></div>
+  </div>
+
+  <!-- game.js の タイトル（ステラでは つかわない） -->
+  <div id="title" class="overlay" hidden>
+    <img id="titleChara" alt=""><button id="startBtn" type="button" hidden></button>
+  </div>
+
+  <!-- もんだい -->
+  <div id="quiz" data-avoid hidden>
+    <div id="monName" class="mon-name"></div>
+    <div id="formulaH" class="formula"><span id="qtext"></span><span class="eq">=</span><span id="ans" class="ans"></span></div>
+    <div id="vbox" class="vbox" hidden>
+      <div id="vgrid" class="vgrid"></div>
+      <div id="vstep" class="vstep"></div>
+    </div>
+    <!-- かんじ -->
+    <div id="wordBox" class="word-box"></div>
+    <!-- おんがく -->
+    <div id="songTitle" class="song-title"></div>
+    <div id="staffBox" class="staff-box"></div>
+    <div id="mInstr" class="m-instr"></div>
+    <div id="qmsg" class="qmsg"></div>
+    <div id="hint" class="hint" hidden>
+      <div id="hintLabel" class="hint-label"></div>
+      <div id="hintBlocks" class="hint-blocks"></div>
+    </div>
+    <button id="nextBtn" class="next-btn" type="button" hidden><kbd>Enter</kbd> で つぎへ</button>
+  </div>
+
+  <div id="pad" hidden>
+    <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+    <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+    <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+    <button type="button" data-k="del" class="sub">けす</button><button type="button" data-k="0">0</button><button type="button" data-k="ok" class="ok">こたえる</button>
+  </div>
+
+  <!-- かんじの かきとり -->
+  <div id="writePad" class="write-pad" data-avoid hidden>
+    <div class="pad-head"><span id="padTitle">ここに かいてね</span><span id="padCount">0かく</span></div>
+    <canvas id="padCanvas"></canvas>
+    <div class="pad-btns">
+      <button id="undoBtn" type="button">1かく けす</button>
+      <button id="clearBtn" type="button">ぜんぶ けす</button>
+      <button id="hintBtn" type="button">おてほん</button>
+      <button id="okBtn" class="ok" type="button">こたえる</button>
+    </div>
+  </div>
+  <!-- おんがくの こたえる ボタン -->
+  <div id="answerBar" class="answer-bar" data-avoid hidden>
+    <div id="noteKeys" class="note-keys"></div>
+    <div class="bar-side">
+      <button id="replayBtn" type="button">♪ もういちど きく</button>
+      <button id="placeOk" class="ok" type="button">こたえる</button>
+    </div>
+  </div>
+
+  <button id="walkBtn" class="walk-btn" type="button" hidden></button>
+
+  <!-- game.js の ゲームクリア（ステラでは つかわない） -->
+  <div id="clear" class="overlay clear" hidden>
+    <div class="clear-card">
+      <div class="clear-chars"><img id="clearHero" alt=""><img id="clearCat" alt=""></div>
+      <div class="clear-stats"></div><div id="clearRank"></div><div class="rank-head"></div><ol id="rankList"></ol>
+      <span id="clearMiss" hidden></span><span id="clearTime" hidden></span>
+      <button id="againBtn" type="button" hidden></button>
+    </div>
+  </div>
+
+  <div id="lvup" class="fx lvup" hidden>
+    <div class="fx-inner">
+      <div class="fx-title" id="upTitle"></div>
+      <img class="fx-chara" id="upChara" alt="">
+      <div class="fx-sub" id="upSub"></div>
+    </div>
+  </div>
+  <div id="lvdown" class="fx lvdown" hidden>
+    <div class="flash"></div>
+    <div class="fx-inner">
+      <div class="fx-title drip" id="downTitle"></div>
+      <img class="fx-chara shiver" id="downChara" alt="">
+      <div class="fx-sub" id="downSub"></div>
+    </div>
+  </div>
+
+  <!-- ===== ステラクエスト の がめん ===== -->
+  <div id="stHud" class="st-hud" hidden>
+    <div class="st-box st-place"><span id="stPlace"></span></div>
+    <div class="st-box st-stat"><span class="cap">HP</span><span id="stHp" class="marks"></span></div>
+    <div class="st-box st-arca"><img id="stArcaIcon" alt="アルカ"><b id="stArca">0</b></div>
+    <div class="st-box st-atk"><span class="cap">こうげき</span><b id="stAtk">1</b></div>
+    <button id="stMenuBtn" class="hud-btn st-title-btn" type="button">タイトルへ</button>
+  </div>
+  <div id="stBanner" class="st-banner" hidden></div>
+  <div id="stDialog" class="st-dialog" hidden>
+    <div id="stSpeaker" class="st-speaker"></div>
+    <div id="stText" class="st-text"></div>
+    <div class="st-next">▼</div>
+  </div>
+  <div id="stPanel" class="st-panel overlay" hidden></div>
+</div>
+
+<script src="data/images.js"></script>
+<script src="data/stella_images.js"></script>
+  <script src="data/building_images.js"></script>
+<script src="data/kanji_data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/stella_save.js"></script>
+<script src="js/game.js"></script>
+  <script src="js/pencil.js"></script>
+<script src="js/maze.js"></script>
+<script src="js/placeholders.js"></script>
+<script src="js/kanji_core.js"></script>
+<script src="js/music_core.js"></script>
+<script src="js/stella_core.js"></script>
+<script src="js/stella_town.js"></script>
+  <script src="js/stella_interior.js"></script>
+<script src="js/stella_shops.js"></script>
+<script src="js/stella_battle.js"></script>
+<script src="js/stella_dungeon.js"></script>
+  <script src="js/stella_rare.js"></script>
+  <script src="js/stella_opening.js"></script>
+  <script src="js/stella_temple.js"></script>
+  <script src="js/stella_necro.js"></script>
+  <script src="js/stella_secret.js"></script>
+  <script src="js/stella_spells.js"></script>
+  <script src="js/stella_sakuranbo.js"></script>
+  <script src="js/stella_hoikuen.js"></script>
+  <script src="js/stella_english.js"></script>
+  <script src="js/stella_timeattack.js"></script>
+  <script src="js/stella_touch.js"></script>
+  <script src="js/stella_pace.js"></script>
+</body>
+</html>
