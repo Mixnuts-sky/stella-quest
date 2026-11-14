@@ -12,6 +12,8 @@ const KANJI_CONFIG = {
   orderTolerance: 1.0,    // かきじゅんが ちがう ときの かたちの ゆるさ（tolerance に かける。ちがう じ は 1.0 でも とおらない ことを kanji_test で たしかめた）
   checkHane: true,        // はね を みる
   checkTouch: true,       // くっつける・はなす を みる
+  touchWarnGap: 0,        // くっつける ところ が この すきま まで なら けいこく だけ で せいかい（0 なら しない。ステラクエスト は 0.16）
+  apartWarn: false,       // はなす ところ が くっついても けいこく だけ で せいかい（ステラクエスト）
   overcomeStreak: 3,      // にがて かんじを なんかい つづけて せいかい したら こくふく
   hintSeconds: 2.5,       // 難易度2の「おてほん」を みせる びょう
   retryOnce: false,       // true：1かいめ の まちがい は こたえ を みせず、ダメージ だけ うけて もういちど かける（ステラクエスト）
@@ -417,6 +419,7 @@ function judgeKanji(ch, userStrokes) {
       if (!same(hookOf(smooth(uFine[map[j]]), 35)) && !same(tailHook(uFine[map[j]]))) return { ok: false, reason: 'hane', stroke: j };
     }
   }
+  const warn = [];
   // ③ くっつける・はなす（すこしの すきま・はみだし は ゆるす）
   if (KANJI_CONFIG.checkTouch) {
     for (let a = 0; a < n; a++) {
@@ -424,12 +427,18 @@ function judgeKanji(ch, userStrokes) {
         const rg = strokeGap(rFine[a], rFine[b]);
         if (rg > 0.03 && rg < 0.12) continue; // おてほんでも びみょうな ところは みない
         const ug = strokeGap(uFine[map[a]], uFine[map[b]]);
-        if (rg <= 0.03 && ug > 0.08) return { ok: false, reason: 'touch', a, b };
-        if (rg >= 0.12 && ug < 0.012) return { ok: false, reason: 'apart', a, b };
+        if (rg <= 0.03 && ug > 0.08) {
+          if (ug <= KANJI_CONFIG.touchWarnGap) warn.push({ reason: 'touch', a, b }); // ほぼ くっついている → けいこく だけ
+          else return { ok: false, reason: 'touch', a, b };
+        }
+        if (rg >= 0.12 && ug < 0.012) {
+          if (KANJI_CONFIG.apartWarn) warn.push({ reason: 'apart', a, b });
+          else return { ok: false, reason: 'apart', a, b };
+        }
       }
     }
   }
-  return { ok: true, order, reversed };
+  return { ok: true, order, reversed, warn };
 }
 window.judgeKanji = judgeKanji; // テスト よう
 
@@ -455,6 +464,7 @@ function kanjiSubmit() {
   if (res.ok) {
     q.results[q.step] = 'ok';
     if (res.order === false) q.orderWarn = (q.orderWarn || []).concat(ch); // かきじゅん ちがい は けいこく だけ（せいかい）
+    (res.warn || []).forEach((w) => { q.touchWarn = (q.touchWarn || []).concat(`「${ch}」の ${w.a + 1}かくめと ${w.b + 1}かくめは ${w.reason === 'touch' ? 'くっつけよう' : 'はなして かこう'}`); });
     const overcame = recordResult(ch, true);
     if (overcame) q.overcame = (q.overcame || []).concat(ch);
     if (q.step < q.targets.length - 1) {
@@ -475,6 +485,13 @@ function kanjiSubmit() {
       w.textContent = `⚠ 「${q.orderWarn.join('・')}」の かきじゅんが ちがうよ！ ただしい かきじゅんを おぼえよう`;
       $('qmsg').appendChild(w);
       note(440, 0.1, 0.15, { type: 'triangle', vol: 0.08 }); note(370, 0.25, 0.2, { type: 'triangle', vol: 0.08 }); // ピコン（けいこく）
+    }
+    if (q.touchWarn) { // ほぼ くっついている など：せいかい だけど けいこく
+      const w = document.createElement('span');
+      w.className = 'order-warn';
+      w.textContent = `⚠ ${q.touchWarn.join('、')}`;
+      $('qmsg').appendChild(w);
+      if (!q.orderWarn) { note(440, 0.1, 0.15, { type: 'triangle', vol: 0.08 }); note(370, 0.25, 0.2, { type: 'triangle', vol: 0.08 }); }
     }
     return;
   }

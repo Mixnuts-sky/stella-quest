@@ -19,6 +19,8 @@ const KANJI_TAG = { 1: 'かんじ 1', 2: 'かんじ 2', 3: 'かんじ 3', 4: '�
 // にがて かんじは セーブデータに きろく
 KANJI_HOOKS.loadWeak = () => (ST.data && ST.data.weak) || {};
 KANJI_CONFIG.retryOnce = true; // かんじ は 1かい まちがえても こたえ を みせず もういちど（ダメージ は ある）
+// 2026-11-15：はんてい を ゆるく（かたち すこし・ほぼ くっついている／すこし かさなる は けいこく だけ で せいかい）
+Object.assign(KANJI_CONFIG, { tolerance: 0.30, maxDev: 0.38, touchWarnGap: 0.16, apartWarn: true });
 KANJI_HOOKS.saveWeak = (w) => { if (ST.data) ST.data.weak = w; };
 
 // いまの たたかい：{ difficulty, practice, returnTo, pos }

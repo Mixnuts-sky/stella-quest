@@ -13,6 +13,7 @@ const GROW = {
   catExp: [0, 1, 3, 6, 10], // レベル 1〜5 に なる まで の チュール（ごうけい）
   catChance: 0.06,          // レベル × これ で たすけ に くる
 };
+try { const t = localStorage.getItem('stella:test:catChance'); if (t !== null) GROW.catChance = +t; } catch { /* テスト よう（ふだん は ない） */ }
 
 // ---------------------------------------------------------------------
 //  ほし の かけら

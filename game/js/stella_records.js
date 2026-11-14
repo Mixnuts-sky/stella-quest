@@ -106,6 +106,10 @@ askQuestion = function () {
     const o = makeQuestion; makeQuestion = () => mk(w.a, w.op, w.b);
     m.subject = 'math';
     try { baseAskQuestionRec(); } finally { makeQuestion = o; }
+  } else if (w.subj === 'english' && w.key.length > 1) { // ことば（3もじ）
+    const cvc = CVC.find((c) => c[0] === w.key) || [w.key, '✏'];
+    askEngWrite(m, { ...engWriteQuestion(6), target: w.key, symbol: w.key, word: w.key,
+      promptHtml: `<span class="eng-pic">${cvc[1]}</span> この ことば を 3もじ で かこう`, speak: () => speakEn(`${w.key}. ${w.key}.`, 0.6) });
   } else if (w.subj === 'english') {
     const up = w.key === w.key.toUpperCase(), i = (up ? UPPER : LOWER).indexOf(w.key);
     askEngWrite(m, { ...engWriteQuestion(up ? 1 : 2), target: w.key, symbol: w.key,

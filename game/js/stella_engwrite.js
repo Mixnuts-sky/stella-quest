@@ -139,12 +139,13 @@ function rankLetters(strokes, upper) {
   return Object.keys(LETTER_CLOUDS).filter((ch) => (ch === ch.toUpperCase()) === upper)
     .map((ch) => ({ ch, d: Math.min(...LETTER_CLOUDS[ch].map((t) => pMatch(c, t))) })).sort((p, q) => p.d - q.d);
 }
-const ENGW = { maxDist: 9, near: 1.06 };
+const ENGW = { maxDist: 9, near: 1.3, rank: 3, okDist: 0 }; // 2026-11-15：ゆるく（かたち が あって いれば OK） // rank：なんばん まで の ちかさ なら せいかい／okDist：この ちかさ いない なら じゅんい に かかわらず せいかい
 function judgeLetter(strokes, target) {
   const r = rankLetters(strokes, target === target.toUpperCase());
   if (!r.length) return { ok: false, best: null };
   const mine = r.find((o) => o.ch === target);
-  const ok = !!mine && mine.d <= ENGW.maxDist && (r[0].ch === target || (r[1] && r[1].ch === target && mine.d <= r[0].d * ENGW.near));
+  const pos = r.findIndex((o) => o.ch === target);
+  const ok = !!mine && mine.d <= ENGW.maxDist && (pos === 0 || mine.d <= ENGW.okDist || (pos < ENGW.rank && mine.d <= r[0].d * ENGW.near));
   return { ok, best: r[0].ch, d: mine ? mine.d : null, rank: r.slice(0, 3) };
 }
 
@@ -263,6 +264,24 @@ function engSubmit() {
   const res = [...q.target].map((ch, i) => (groups[i].length ? judgeLetter(toLetter(groups[i]), ch) : { ok: false, best: null }));
   const ok = res.every((r) => r.ok);
   q.judged = res;
+  // 1かいめ の まちがい：こたえ は みせず、ダメージ を うけて もういちど（かんじ と おなじ。あっている もじ は のこす）
+  const m = S.monster;
+  if (!ok && !q.retried && m && !m.nanmon && S.hp > (m.rare ? 2 : 1)) {
+    q.retried = true;
+    if (ST.data && ST.battle) { const wq = (ST.data.weakQ = ST.data.weakQ || { math: {}, english: {} }); wq.english[q.target] = Math.min(5, (wq.english[q.target] || 0) + 2); } // にがて に のこす
+    const bad = res.map((r, i) => (r.ok ? -1 : i)).filter((i) => i >= 0);
+    EW.strokes = EW.strokes.filter((st) => { const cx = st.reduce((a2, pt) => a2 + pt[0], 0) / st.length; return !bad.includes(Math.min(n - 1, Math.max(0, Math.floor(cx * n)))); });
+    drawEngPad();
+    $('qmsg').textContent = `おしい！ ${n > 1 ? `${bad.map((i) => i + 1).join('・')}もじめ が すこし ちがう みたい。` : 'かたち が すこし ちがう みたい。'}もういちど かいてみよう！`;
+    $('qmsg').className = 'qmsg bad';
+    SFX.bad();
+    m.state = 'attack'; m.t = 0;
+    if (m.boss) { SFX.roar(); later(0.3, SFX.breath); }
+    later(m.boss ? 0.7 : 0.3, damageHero);
+    later(m.boss ? 1.4 : 0.8, () => { if (S.monster === m && m.state === 'attack') { m.state = 'idle'; m.t = 0; } });
+    if (q.speak) later(0.9, q.speak);
+    return;
+  }
   setMode('answered');
   if (!ok) { EW.reveal = true; drawEngPad(); }
   resolveAnswer(ok, `おしい！ こたえは「${q.target}」だよ`);
