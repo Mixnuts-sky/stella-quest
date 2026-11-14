@@ -91,10 +91,13 @@ function choiceBox() {
   return box;
 }
 function renderVoiceBtn() { const b = $('choiceVoice'); if (b) { b.hidden = !isHoikuen(); b.textContent = ST.data.hkVoice ? 'こえ：オン' : 'こえ：オフ'; b.classList.toggle('on', !!ST.data.hkVoice); } }
+// 「おおもじ」「こもじ」を いろ で わける（おおもじ ＝ あか・こもじ ＝ あお）（2026-11-14）
+const caseMark = (html) => String(html).replace(/おおもじ|こもじ/g, (w) => `<b class="case-${w === 'こもじ' ? 'lo' : 'up'}">${w}</b>`);
+const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let choiceSel = 0;
 function renderChoices() {
   const q = S.q, box = choiceBox();
-  if (q.promptHtml) $('choicePrompt').innerHTML = q.promptHtml; else $('choicePrompt').textContent = q.prompt;
+  $('choicePrompt').innerHTML = caseMark(q.promptHtml || escHtml(q.prompt));
   renderVoiceBtn();
   $('choiceOpts').innerHTML = q.options.map((o, i) => {
     let cls = 'choice-opt ' + q.kind;

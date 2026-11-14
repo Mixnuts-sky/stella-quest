@@ -158,11 +158,11 @@ function engWriteQuestion(lv) {
   const base = { subject: 'english', spellSubject: 'english', engw: true, tag: 'えいご・かく', kind: 'engw' };
   if (lv <= 2) {
     const i = rnd(0, 25), ans = lv === 1 ? UPPER[i] : LOWER[i];
-    return { ...base, target: ans, promptHtml: `「${ABC_READ[i]}」の <b>${lv === 1 ? 'おおもじ' : 'こもじ'}</b> を かこう`, symbol: ans, speak: () => speakEn(UPPER[i]) };
+    return { ...base, target: ans, promptHtml: `「${ABC_READ[i]}」の ${lv === 1 ? 'おおもじ' : 'こもじ'} を かこう`, symbol: ans, speak: () => speakEn(UPPER[i]) };
   }
   if (lv === 3) {
     const i = rnd(0, 25);
-    return { ...base, target: LOWER[i], promptHtml: `<b class="eng-big">${UPPER[i]}</b> の <b>こもじ</b> を かこう`, symbol: LOWER[i], speak: () => speakEn(UPPER[i]) };
+    return { ...base, target: LOWER[i], promptHtml: `<b class="eng-big">${UPPER[i]}</b> の こもじ を かこう`, symbol: LOWER[i], speak: () => speakEn(UPPER[i]) };
   }
   if (lv === 4) {
     const w = pick(FIRST_WORDS);
@@ -243,7 +243,7 @@ function askEngWrite(m, q) {
   const who = m.boss ? `ボス ${enemyTag(m)}！` : m.rare ? `レア ${enemyTag(m)} が あらわれた！` : `${enemyTag(m)} が あらわれた！`;
   $('monName').innerHTML = `${who} <span class="subj-tag english">${q.tag}</span>`;
   $('quiz').classList.toggle('boss', !!m.boss);
-  $('engwPrompt').innerHTML = q.promptHtml;
+  $('engwPrompt').innerHTML = caseMark(q.promptHtml);
   $('qmsg').textContent = ''; $('qmsg').className = 'qmsg';
   $('nextBtn').hidden = true; $('hint').hidden = true;
   S.hintNext = false;

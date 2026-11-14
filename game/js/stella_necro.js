@@ -56,10 +56,10 @@ function buildNecroSprite(url) {
 // ---------------------------------------------------------------------
 //  もんだい
 // ---------------------------------------------------------------------
-// くく：1の だん から。へった HP に あわせて だんが あがる（さいごは 9の だん）
+// くく：2の だん から。へった HP に あわせて だんが あがる（さいごは 9の だん）。1の だん と ×1 は ださない
 function kukuQuestion(m) {
-  const dan = Math.min(9, 1 + Math.floor((1 - m.hp / m.maxHp) * 9));
-  const b = rnd(1, 9);
+  const dan = Math.min(9, 2 + Math.floor((1 - m.hp / m.maxHp) * 8));
+  const b = rnd(2, 9);
   return { a: dan, op: '×', b, ans: dan * b, text: `${dan} × ${b}`, kuku: true };
 }
 // 3けたの たしざん・ひきざん（こたえも 3けたまで）

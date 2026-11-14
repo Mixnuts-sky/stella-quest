@@ -1,9 +1,11 @@
 'use strict';
 // =====================================================================
 //  ステラクエスト：たたかい の アクション
-//  ・タイミング こうげき：せいかい の あと、うごく しるし に あわせて タップ（Enter）→「つよい」は ダメージ 2ばい
+//  ・ためる こうげき：せいかい の あと、ながおし（Enter・スペース）で パワー を ためる → まんたん で ひかって いる
+//    あいだ に はなすと クリティカル（ダメージ 2ばい）。はやく はなす・ためすぎ は ふつう（2026-11-14 に かえた）
 //  ・コンボ：はやく こたえると れんぞく。1コンボ ごと に ダメージ ＋1（おそくても そん は しない）
-//  ・スワイプ で よける：まちがえた とき、やじるし の むき に スワイプ（やじるし キー）できたら ダメージ 0
+//  ・よける：まちがえた とき、てき の たま が ゆっくり とんで くる。ひかる わ に はいったら
+//    がめん の どこ でも タップ（どの キー でも）→ ダメージ 0。はやすぎ・おそすぎ は あたる（2026-11-14 に かえた）
 //  ・ボス の おおわざ：ボス の HP が はんぶん に なったら、れんだ で バリア（かず で ダメージ が へる）
 //  ・とどめ を ゆび で とばす：ひっぱって はなすと ねらった ほう へ（ボス に むいて いれば あたる）
 //  stella_timeattack.js の あと、stella_pace.js の まえ に よむ。しよう：docs/GAME_SPEC.md 14.8
@@ -11,10 +13,11 @@
 
 const ACT = {
   timingSec: Infinity,   // タイミング こうげき を まつ じかん（2026-11-15：おす まで きえない。テスト だけ みじかく）
-  zone: [0.39, 0.61],    // ぴったり の ところ（0〜1）
-  period: 1.15,          // しるし が いったりきたり する はやさ（びょう）
-  dodgeSec: { mob: 1.2, boss: 1.0 },  // よけられる じかん（やじるし が でて から）
-  warnSec: 0.9,                       // よける まえ の「こうげき が くる！」（よちょう）
+  chargeSec: 0.9,        // ながおし で まんたん に なる まで（びょう）
+  glowSec: 1.1,          // まんたん で ひかって いる じかん（この あいだ に はなすと クリティカル）
+  dodgeTravel: { mob: 2.4, boss: 2.0 }, // たま が とんで くる じかん（びょう）
+  dodgeWin: [0.55, 0.93],               // ひかる わ（とぶ みちのり の この あいだ で タップ）
+  warnSec: 0.6,                         // たま が とぶ まえ の「こうげき が くる！」（よちょう）
   finalDmg: 2,                        // とどめ の まえ の ボス の さいご の こうげき（よけられない と）
   mashSec: 3.2,          // ボス の おおわざ：れんだ の じかん
   mashGood: [14, 7],     // この かず で ダメージ 0・1（それ より すくない と 2）
@@ -25,7 +28,7 @@ const ACT = {
 };
 try {
   const t = localStorage.getItem('stella:test:actionSec');
-  if (t !== null) { ACT.timingSec = +t; ACT.mashSec = +t; ACT.warnSec = +t; ACT.dodgeSec = { mob: 0.3, boss: 0.3 }; ACT.finalDmg = 0; } // テスト は みじかく・さいご の こうげき は ダメージ なし（action で みる）
+  if (t !== null) { ACT.timingSec = +t; ACT.mashSec = +t; ACT.warnSec = +t; ACT.dodgeTravel = { mob: 0.3, boss: 0.3 }; ACT.finalDmg = 0; } // テスト は みじかく・さいご の こうげき は ダメージ なし（action で みる）
   if (localStorage.getItem('stella:test:autoAim')) ACT.autoAim = true;
   if (t !== null) ACT.mashAuto = true; // テスト：れんだ は じどう で せいこう
 } catch { /* テスト よう（ふだん は ない） */ }
@@ -37,21 +40,16 @@ const actOn = () => !!(ST.battle && !ST.battle.practice && S.monster && !S.monst
 // ---------------------------------------------------------------------
 (function buildActionUi() {
   const add = (id, cls, html = '') => { const d = document.createElement('div'); d.id = id; d.className = cls; d.hidden = true; d.innerHTML = html; $('game').appendChild(d); return d; };
-  add('actTiming', 'act-layer act-timing', '<div class="act-box"><div class="act-cap">タイミング よく タップ！</div><div class="act-bar"><i class="zone"></i><i class="mark"></i></div></div>');
-  add('actDodge', 'act-layer act-dodge', '<div class="act-box"><div class="act-cap">スワイプ で よけて！</div><div class="act-arrow">⬅</div></div>');
+  add('actTiming', 'act-layer act-timing', '<div class="act-box"><div class="act-cap">ながおし で ためて、ひかったら はなす！</div><div class="act-bar charge"><i class="fill"></i></div></div>');
+  add('actDodge', 'act-layer act-dodge', '<div class="act-box"><div class="act-cap">こうげき が くる！</div><div class="act-arrow">❗</div></div>');
   add('actMash', 'act-layer act-mash', '<div class="act-box"><div class="act-cap">おおわざ が くる！ れんだ で バリア！</div><div class="act-count">0</div><div class="act-meter"><i></i></div></div>');
   add('actAim', 'act-layer act-aim', '<div class="act-box top"><div class="act-cap">ひっぱって はなして とどめ！</div><small>ちゅなちゃん から うしろ へ ひっぱる → はなす と とんでいく</small></div><canvas id="actAimCv"></canvas>');
   add('actPop', 'act-pop');
-  $('actTiming').addEventListener('pointerdown', (e) => { e.preventDefault(); timingTap(); });
+  const tl = $('actTiming');
+  tl.addEventListener('pointerdown', (e) => { e.preventDefault(); try { tl.setPointerCapture(e.pointerId); } catch { /* なし */ } timingDown(); });
+  ['pointerup', 'pointercancel'].forEach((ev) => tl.addEventListener(ev, () => timingUp()));
   $('actMash').addEventListener('pointerdown', (e) => { e.preventDefault(); mashTap(); });
-  const dl = $('actDodge');
-  dl.addEventListener('pointerdown', (e) => { ACT.swipe = { x: e.clientX, y: e.clientY }; });
-  dl.addEventListener('pointerup', (e) => {
-    if (!ACT.swipe) return;
-    const dx = e.clientX - ACT.swipe.x, dy = e.clientY - ACT.swipe.y; ACT.swipe = null;
-    if (Math.hypot(dx, dy) < 36) return;
-    dodgeInput(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
-  });
+  $('actDodge').addEventListener('pointerdown', (e) => { e.preventDefault(); dodgeInput(); });
   const al = $('actAim');
   al.addEventListener('pointerdown', (e) => { if (!ACT.aim) return; e.preventDefault(); ACT.aim.drag = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY }; try { al.setPointerCapture(e.pointerId); } catch { /* なし */ } });
   al.addEventListener('pointermove', (e) => { if (ACT.aim && ACT.aim.drag) { ACT.aim.drag.x = e.clientX; ACT.aim.drag.y = e.clientY; drawAim(); } });
@@ -101,31 +99,46 @@ const baseCastAct = cast;
 cast = function (kind, onHit) {
   if (!ACT.pendingTiming || !actOn()) { baseCastAct(kind, onHit); return; }
   ACT.pendingTiming = false;
-  ACT.timing = { t0: performance.now(), done: false, go: () => baseCastAct(kind, onHit) };
-  $('actTiming').hidden = false;
+  ACT.timing = { t0: performance.now(), hold: null, done: false, go: () => baseCastAct(kind, onHit) };
+  const el = $('actTiming');
+  el.classList.remove('full');
+  el.querySelector('.act-cap').textContent = 'ながおし で ためて、ひかったら はなす！';
+  el.querySelector('.fill').style.width = '0%';
+  el.hidden = false;
   stepTiming();
 };
-function timingPos() { const t = (performance.now() - ACT.timing.t0) / 1000 / ACT.period; return 0.5 - 0.5 * Math.cos(t * Math.PI * 2 + Math.PI * 0.35); }
+const holdSec = (T) => (T.hold == null ? 0 : (performance.now() - T.hold) / 1000);
 function stepTiming() {
   const T = ACT.timing;
   if (!T || T.done) return;
-  $('actTiming').querySelector('.mark').style.left = `${timingPos() * 100}%`;
-  if ((performance.now() - T.t0) / 1000 >= ACT.timingSec) { finishTiming(false); return; }
+  const el = $('actTiming'), e = holdSec(T);
+  el.querySelector('.fill').style.width = `${Math.min(1, e / ACT.chargeSec) * 100}%`;
+  if (T.hold != null) {
+    const glow = e >= ACT.chargeSec;
+    if (glow && !T.full) { T.full = true; el.classList.add('full'); el.querySelector('.act-cap').textContent = '✨ いま はなして！ ✨'; [1319, 1760].forEach((f, i) => note(f, i * 0.05, 0.14, { type: 'sine', vol: 0.07 })); }
+    else if (!glow && T.hold != null && (T.tick = (T.tick || 0) + 1) % 6 === 0) note(500 + e / ACT.chargeSec * 700, 0, 0.05, { type: 'triangle', vol: 0.04 });
+    if (e > ACT.chargeSec + ACT.glowSec) { finishTiming(false, 'ためすぎ……ふつう'); return; }
+  } else if ((performance.now() - T.t0) / 1000 >= ACT.timingSec) { finishTiming(false); return; }
   requestAnimationFrame(stepTiming);
 }
-function timingTap() {
+function timingDown() {
   const T = ACT.timing;
-  if (!T || T.done) return;
-  const p = timingPos();
-  finishTiming(p >= ACT.zone[0] && p <= ACT.zone[1]);
+  if (!T || T.done || T.hold != null) return;
+  T.hold = performance.now();
 }
-function finishTiming(strong) {
+function timingUp() {
+  const T = ACT.timing;
+  if (!T || T.done || T.hold == null) return;
+  const e = holdSec(T);
+  finishTiming(e >= ACT.chargeSec && e <= ACT.chargeSec + ACT.glowSec, e < ACT.chargeSec ? 'ふつう（もっと ためよう）' : 'ふつう');
+}
+function finishTiming(strong, msg = 'ふつう') {
   const T = ACT.timing;
   T.done = true; ACT.timing = null;
-  $('actTiming').hidden = true;
+  $('actTiming').hidden = true; $('actTiming').classList.remove('full');
   ACT.mult = strong ? 2 : 1;
   if (strong) { actPop('つよい！ ダメージ 2ばい！', '#e2588f', 'crit'); [988, 1318, 1760].forEach((f, i) => note(f, i * 0.06, 0.2, { type: 'square', vol: 0.07 })); }
-  else actPop('ふつう', '#7a6890');
+  else actPop(msg, '#7a6890');
   T.go();
 }
 
@@ -160,13 +173,11 @@ function critFx(m) {
 // ---------------------------------------------------------------------
 //  スワイプ で よける（まちがえた とき）
 // ---------------------------------------------------------------------
-const DODGE_ARROW = { up: '⬆', down: '⬇', left: '⬅', right: '➡' };
 function openDodge(m, opts = {}) {
-  const dir = pick(['up', 'down', 'left', 'right']);
-  const D = ACT.dodge = { dir, phase: 'warn', done: false, pending: 0, dmg: opts.dmg || 0, onClose: opts.onClose || null };
+  const D = ACT.dodge = { phase: 'warn', done: false, pending: 0, dmg: opts.dmg || 0, onClose: opts.onClose || null, m, travel: m.boss ? ACT.dodgeTravel.boss : ACT.dodgeTravel.mob, t0: 0 };
   ACT.shield = 0;
   ACT.dodged = false;
-  const el = $('actDodge'), win = m.boss ? ACT.dodgeSec.boss : ACT.dodgeSec.mob;
+  const el = $('actDodge');
   el.classList.add('warn');
   el.querySelector('.act-cap').textContent = opts.final ? '⚠ ボス の さいご の こうげき が くる！' : '⚠ こうげき が くる！ じゅんび して！';
   el.querySelector('.act-arrow').textContent = '❗';
@@ -174,24 +185,59 @@ function openDodge(m, opts = {}) {
   note(660, 0, 0.12, { type: 'square', vol: 0.05 }); note(660, 0.18, 0.12, { type: 'square', vol: 0.05 });
   later(ACT.warnSec, () => {
     if (ACT.dodge !== D) return;
-    D.phase = 'go';
+    D.phase = 'go'; D.t0 = performance.now();
     el.classList.remove('warn');
-    el.querySelector('.act-cap').textContent = 'いま！ やじるし の むき に スワイプ！';
-    el.querySelector('.act-arrow').textContent = DODGE_ARROW[dir];
-    note(990, 0, 0.1, { type: 'square', vol: 0.06 });
-    later(win, () => { if (ACT.dodge === D) closeDodge(); });
+    el.querySelector('.act-cap').textContent = 'たま が ひかる わ に はいったら タップ！';
+    el.querySelector('.act-arrow').textContent = '';
+    note(520, 0, 0.3, { type: 'sawtooth', vol: 0.04, slide: 1.5 });
+    stepDodge(D);
   });
 }
-function dodgeInput(dir) {
+const dodgeK = (D) => (D.phase === 'go' ? (performance.now() - D.t0) / 1000 / D.travel : 0);
+const dodgeIn = (D) => { const k = dodgeK(D); return k >= ACT.dodgeWin[0] && k <= ACT.dodgeWin[1]; };
+function stepDodge(D) {
+  if (ACT.dodge !== D || D.done) return;
+  if (dodgeIn(D) && !D.ding) { D.ding = true; note(1175, 0, 0.1, { type: 'sine', vol: 0.07 }); }
+  if (dodgeK(D) > ACT.dodgeWin[1]) { D.done = true; actPop('あたった……', '#e8203c'); closeDodge(); return; } // おそすぎ
+  requestAnimationFrame(() => stepDodge(D));
+}
+// たま と ひかる わ（てき から ちゅなちゃん へ）
+const dodgePath = (D) => {
+  const m = D.m, a = { x: m.x - 60, y: GROUND() - m.height * 0.55 }, b = { x: HERO_X() + 20, y: GROUND() - 90 };
+  return (k) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k - Math.sin(k * Math.PI) * 50 });
+};
+function drawDodge() {
+  const D = ACT.dodge;
+  if (!D || !D.m || D.done) return;
+  const at = dodgePath(D), [w0, w1] = ACT.dodgeWin, mid = at((w0 + w1) / 2), e0 = at(w0), e1 = at(w1);
+  const R = Math.hypot(e1.x - e0.x, e1.y - e0.y) / 2 + 16, inWin = dodgeIn(D);
+  ctx.save();
+  ctx.lineWidth = inWin ? 9 : 6; ctx.strokeStyle = inWin ? '#fff3a0' : 'rgba(255,216,74,.75)';
+  ctx.shadowColor = '#ffd84a'; ctx.shadowBlur = inWin ? 30 : 12;
+  ctx.setLineDash(inWin ? [] : [14, 10]); ctx.lineDashOffset = -performance.now() / 30;
+  ctx.beginPath(); ctx.arc(mid.x, mid.y, R, 0, 7); ctx.stroke();
+  ctx.setLineDash([]);
+  if (inWin) { ctx.fillStyle = 'rgba(255,243,160,.22)'; ctx.fill(); }
+  const k = D.phase === 'go' ? Math.min(1, dodgeK(D)) : 0, p = at(k), r = D.phase === 'go' ? 22 : 10 + 10 * Math.abs(Math.sin(performance.now() / 120));
+  const g = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, r);
+  g.addColorStop(0, '#fff6c0'); g.addColorStop(0.45, '#ff9a2e'); g.addColorStop(1, 'rgba(255,50,30,0)');
+  ctx.shadowBlur = 0; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+  if (D.phase === 'go' && Math.random() < 0.6) spawn('twinkle', p.x + rnd(-6, 6), p.y + rnd(-6, 6), { color: pick(['#ff7a3c', '#ffd84a']), size: rnd(4, 8) });
+  ctx.restore();
+}
+const baseDrawMonsterAct = drawMonster;
+drawMonster = function () { baseDrawMonsterAct(); drawDodge(); };
+function dodgeInput() {
   const D = ACT.dodge;
   if (!D || D.done || D.phase !== 'go') return; // よちょう の あいだ は まだ
   D.done = true;
-  if (dir === D.dir) {
+  const ok = dodgeIn(D);
+  if (ok) {
     ACT.dodged = true;
     S.hero.jump = 1;
     actPop('よけた！', '#1f9c74');
     note(1200, 0, 0.12, { type: 'sine', vol: 0.08, slide: 0.6 });
-  } else actPop('あっ……', '#e8203c');
+  } else actPop('はやすぎ……', '#e8203c');
   $('actDodge').hidden = true;
   if (ACT.dodged && D.pending === 0) ACT.shield = S.t + 1.2; // こうげき が まだ とどいて いない うち に よけた → この あと の こうげき は あたらない
   closeDodge(); // けっか が きまったら すぐ
@@ -333,17 +379,23 @@ function aimFire() {
 // ---------------------------------------------------------------------
 addEventListener('keydown', (e) => {
   const enter = e.key === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter';
-  if (ACT.timing && enter && !e.repeat) { timingTap(); e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if (ACT.timing && enter) { if (!e.repeat) timingDown(); e.preventDefault(); e.stopImmediatePropagation(); return; }
   if (ACT.mash && enter && !e.repeat) { mashTap(); e.preventDefault(); e.stopImmediatePropagation(); return; }
   if (ACT.aim && enter && !e.repeat) { aimFire(); e.preventDefault(); e.stopImmediatePropagation(); return; }
-  if (ACT.dodge && !ACT.dodge.done) {
-    const d = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[e.code];
-    if (d) { dodgeInput(d); e.preventDefault(); e.stopImmediatePropagation(); }
+  if (ACT.dodge && !ACT.dodge.done) { // どの キー でも よける
+    const d = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, Space: 1, Enter: 1, NumpadEnter: 1 }[e.code];
+    if (d) { if (!e.repeat) dodgeInput(); e.preventDefault(); e.stopImmediatePropagation(); }
   }
+}, true);
+addEventListener('keyup', (e) => {
+  if (ACT.timing && (e.key === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter')) { timingUp(); e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 
 // テスト よう
 window.actTest = {
-  state: () => ({ timing: !!ACT.timing, dodge: ACT.dodge && ACT.dodge.phase === 'go' && ACT.dodge.dir, warn: !!(ACT.dodge && ACT.dodge.phase === 'warn'), mash: !!ACT.mash, aim: !!ACT.aim, combo: ACT.combo }),
-  tapGood() { if (!ACT.timing) return false; ACT.timing.t0 = performance.now() - ACT.period * 1000 * ((Math.PI / 2 - Math.PI * 0.35) / (Math.PI * 2)); timingTap(); return true; },
+  state: () => ({ timing: !!ACT.timing, dodge: !!(ACT.dodge && ACT.dodge.phase === 'go' && !ACT.dodge.done), win: !!(ACT.dodge && dodgeIn(ACT.dodge)), warn: !!(ACT.dodge && ACT.dodge.phase === 'warn'), mash: !!ACT.mash, aim: !!ACT.aim, combo: ACT.combo }),
+  tapGood() { if (!ACT.timing) return false; finishTiming(true); return true; },
+  hold(sec) { const T = ACT.timing; if (!T) return false; timingDown(); T.hold = performance.now() - sec * 1000; return true; },
+  release: () => timingUp(),
+  dodgeAt(k) { const D = ACT.dodge; if (!D || D.phase !== 'go') return false; D.t0 = performance.now() - k * D.travel * 1000; return true; },
 };

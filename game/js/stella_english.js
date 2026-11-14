@@ -113,7 +113,7 @@ askQuestion = function () {
   const lv = Math.min(6, ST.battle.difficulty + (m.boss || m.rare ? 1 : 0));
   askChoice(m, englishQuestion(lv));
   const tag = $('monName').querySelector('.subj-tag');
-  if (tag) tag.insertAdjacentHTML('beforebegin', `<span class="eng-lv">${['', 'おおもじ', 'こもじ', 'おおもじ・こもじ', 'はじめの おと', 'まんなかの おと', 'よんで みよう'][lv]}</span> `);
+  if (tag) tag.insertAdjacentHTML('beforebegin', `<span class="eng-lv">${caseMark(['', 'おおもじ', 'こもじ', 'おおもじ・こもじ', 'はじめの おと', 'まんなかの おと', 'よんで みよう'][lv])}</span> `);
 };
 
 // ---------------------------------------------------------------------

@@ -21,7 +21,8 @@ const RG_CONF = {
   enemyPerRoom: 0.55,       // さいしょ の てき（へや の かず × これ）
   enemyCap: 1.1,            // てき の さいだい（へや の かず × これ）
   spawnEvery: 28,           // この ほすう ごと に てき が 1たい ふえる
-  itemPerRoom: 0.5,         // おちている アイテム（へや の かず × これ）
+  itemPerRoom: 0.3,         // おちている アイテム（へや の かず × これ）（2026-11-14：0.5 → 0.3）
+  loseDist: 8,              // おいかける てき が これ より はなれる と あきらめて うろうろ に もどる
   chests: [1, 2],           // たからばこ の かず
   houseRate: 0.2,           // モンスターハウス が ある かくりつ（なんいど 2 から）
   shimaRate: 0.12,          // しまじろう が でる かくりつ（1かい ごと）
@@ -31,7 +32,7 @@ const RG_CONF = {
   jumpTime: 0.34,          // ジャンプ（2マス）に かかる びょう（stella_jump.js）
   gaugeSteps: 120,          // ひっさつ ゲージ 3だん ぶん（stella_special.js が SP.stage × 3 で うわがき）
 };
-const RG_FLOOR_ITEMS = [['herb', 60], ['water', 22], ['churu', 18]];
+const RG_FLOOR_ITEMS = [['herb', 52], ['water', 18], ['churu', 16], ['spicy', 14]];
 const RG_CHEST_ITEMS = [['revive', 34], ['wing', 20], ['churu', 24], ['water', 22]];
 const rgPick = (table) => { let r = Math.random() * table.reduce((s, x) => s + x[1], 0); for (const [k, w] of table) { r -= w; if (r <= 0) return k; } return table[0][0]; };
 const RG_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -460,6 +461,8 @@ function rgWorldTurn() {
   const heroRoom = rgHeroRoom();
   const occupied = new Set(M.enemies.map((e) => e.y * TW + e.x));
   if (typeof rgFeatBlocked === 'function') rgFeatBlocked().forEach((k) => occupied.add(k)); // がけ・しげみ には はいれない
+  // みつけた おとしあな・がけ の うえ と となり には はいらない（ジャンプ で おりる ところ を あけて おく）
+  M.pits.filter((p) => p.found).concat(M.gaps || []).forEach((p) => { occupied.add(p.y * TW + p.x); RG_DIRS.forEach(([dx, dy]) => occupied.add((p.y + dy) * TW + p.x + dx)); });
   let hit = null;
   for (const e of M.enemies) {
     if (e.state === 'sleep') continue;
@@ -471,6 +474,8 @@ function rgWorldTurn() {
       if (e.kind === 'normal') { e.alert = { t: 0 }; note(880, 0, 0.08, { type: 'square', vol: 0.04 }); rgNoticeStop(); continue; } // みつけた ターン は てき も ちゅなちゃん も とまる（よける じかん）
     }
     let next = null;
+    // とおく に はなれたら あきらめる（おなじ へや に いる あいだ は おいかける）
+    if (e.state === 'chase' && e.kind === 'normal' && (dh < 0 || dh > RG_CONF.loseDist) && !(heroRoom >= 0 && M.roomOf[k] === heroRoom)) { e.state = 'wander'; e.lost = { t: 0 }; continue; }
     if (e.state === 'chase') {
       next = RG_DIRS.map(([dx, dy]) => ({ x: e.x + dx, y: e.y + dy })).filter((p) => M.grid[p.y * TW + p.x] && hd[p.y * TW + p.x] >= 0 && hd[p.y * TW + p.x] < dh)
         .sort(() => Math.random() - 0.5)[0] || null;
@@ -555,7 +560,8 @@ function rgAfterBattle() {
     for (let k = 0; k < 24; k++) {
       const ang = Math.random() * Math.PI * 2;
       const x = Math.max(0, Math.min(M.TW - 1, S.pos.x + Math.round(Math.cos(ang) * 9))), y = Math.max(0, Math.min(M.TH - 1, S.pos.y + Math.round(Math.sin(ang) * 9)));
-      const dd = Math.abs(x - S.pos.x) + Math.abs(y - S.pos.y);
+      const dd = Math.abs(x - S.pos.x) + Math.abs(y - S.pos.y), at = (o) => o.x === x && o.y === y;
+      if (M.items.some(at) || M.chests.some(at) || M.enemies.some(at) || M.pits.some(at) || at(M.goal)) continue; // ものの うえ に かさならない
       if (dd > bestD) { best = { x, y }; bestD = dd; }
       if (dd >= 9) break;
     }
@@ -768,6 +774,7 @@ function rgDrawEnemy(e, ex, ey, T) {
   ctx.restore();
   if (e.state === 'sleep') outlinedText('Zz', sx + T * 0.35, sy - hh - 4 - Math.sin(S.t * 2) * 3, 13, '#8a5cd1');
   else if (e.state === 'chase' && e.kind === 'normal') { const big = e.alert && (e.alert.t += 1 / 60) < 0.8; outlinedText('！', sx + T * 0.3, sy - hh - 2 - (big ? 6 : 0), big ? 30 : 18, '#ff4f6a'); }
+  else if (e.lost && (e.lost.t += 1 / 60) < 1.4) outlinedText('？', sx + T * 0.3, sy - hh - 2, 20, '#8a5cd1'); // あきらめた
   if (e.kind === 'shima' && e.say && e.say.t < 3.2) rgDrawShimaSay(sx, sy - hh - 10);
 }
 // ふきだし「今日（きょう）は もう 終（お）わったよ！！」（ルビ つき）

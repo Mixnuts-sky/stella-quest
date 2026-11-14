@@ -5,7 +5,8 @@
 //    （むげん の とう・タイムアタック では ない）
 //  ・←→ で あるく、ジャンプ ボタン（スペース・↑）で ジャンプ。つる は ↑↓ で のぼる・おりる
 //  ・あしば：ふつう・よこ に うごく・たて に うごく・のると くずれる・つる
-//  ・しかけ：とげ・こうもり・まわる ひのぼう・した から せまる かべ
+//  ・しかけ：とげ・こうもり・まわる ひのぼう・した から せまる とげ の ゆか
+//  ・つる の いちばん うえ は あしば（のぼりきる と のれる）
 //    どれか に さわる と いちばん した から やりなおし（ダメージ なし）
 //  ・てっぺん の とびら に つくと ボス の たたかい（おしろ の おくじょう の けしき）
 //  ・なんいど が たかい ほど たかく、しかけ が ふえる・かべ が はやい
@@ -33,7 +34,7 @@ function climbStart() {
   RG.climb = climbBuild(d);
   heldDirs.length = 0;
   showBanner('おしろ を のぼろう！', 2);
-  later(1.2, () => showToast('←→ で あるく・「ジャンプ」で とぶ・つる は ↑↓。ひのぼう・くずれる あしば・せまる かべ に きをつけて！', 4.5));
+  later(1.2, () => showToast('←→ で あるく・「ジャンプ」で とぶ・つる は ↑↓。ひのぼう・くずれる あしば・せまる とげ の ゆか に きをつけて！', 4.5));
   SFX.star();
   return true;
 }
@@ -55,9 +56,15 @@ function climbBuild(d) {
       const p = { x: nx - w / 2, w, y: rowY(r), kind: 'plain' };
       plats.push(p);
       const vx = nx + (Math.random() < 0.5 ? -1 : 1) * (w / 2 - 18);
-      vines.push({ x: vx, top: rowY(r + 2) - 80, bottom: rowY(r) - 20 }); // うえ の あしば より すこし うえ まで（よこ に とびうつれる）
+      // つる の いちばん うえ は ちいさい あしば（のぼりきる と のれる）。となり の あしば と つながって いる
+      const side = vx > C.worldW / 2 ? -1 : 1;
       const w2 = Math.max(96, rnd(140, 190) - d * 8);
-      const nx2 = Math.max(w2 / 2 + 20, Math.min(C.worldW - w2 / 2 - 20, vx + (vx > C.worldW / 2 ? -1 : 1) * (w2 / 2 + 30)));
+      const nx2 = Math.max(w2 / 2 + 20, Math.min(C.worldW - w2 / 2 - 20, vx + side * (w2 / 2 + 30)));
+      const e2 = nx2 - side * w2 / 2; // となり の あしば の つる に ちかい ほう の はし
+      const lo = Math.min(vx - 30, e2), hi = Math.max(vx + 30, e2);
+      const tp = { x: lo, w: hi - lo, y: rowY(r + 2), kind: 'plain', vineTop: true };
+      plats.push(tp);
+      vines.push({ x: vx, top: rowY(r + 2) - C.heroH * 0.5 - 6, bottom: rowY(r) - 20, plat: tp });
       plats.push({ x: nx2 - w2 / 2, w: w2, y: rowY(r + 2), kind: 'plain' });
       cx = nx2; r += 3;
       continue;
@@ -125,7 +132,7 @@ function climbUpdate(dt) {
   if (C.hurtT > 0) { C.hurtT -= dt; if (C.hurtT <= 0) climbRespawn(); return; }
   // せまる かべ
   const Wl = C.wall;
-  if (!Wl.on && h.y < C.ground - CLIMB.rowGap * 2 + 4) { Wl.on = true; showToast('ゴゴゴ……！ した から かべ が せまって くる！ いそいで のぼろう！', 3); S.shake = 0.4; }
+  if (!Wl.on && h.y < C.ground - CLIMB.rowGap * 2 + 4) { Wl.on = true; showToast('ゴゴゴ……！ した から とげ の ゆか が せまって くる！ いそいで のぼろう！', 3); S.shake = 0.4; }
   if (Wl.on) {
     const viewH = H / (W / K.worldW);
     Wl.y = Math.max(C.topPlat.y + 170, Math.min(Wl.y - Wl.sp * dt, h.y + viewH * 0.75));
@@ -134,13 +141,14 @@ function climbUpdate(dt) {
   if (h.buffer > 0) h.buffer -= dt;
   // つる
   const vine = C.vines.find((v) => Math.abs(h.x - v.x) < 24 && h.y - 10 <= v.bottom + 30 && h.y - K.heroH * 0.5 >= v.top - 10);
-  if (!h.climb && vine && (U || D) && !(D && h.on)) { h.climb = vine; h.vx = 0; h.vy = 0; h.on = null; }
+  if (!h.climb && vine && (U || D) && !(D && h.on && h.on !== vine.plat) && !(U && h.on === vine.plat)) { h.climb = vine; h.vx = 0; h.vy = 0; h.on = null; if (D) h.y += 4; }
   if (h.climb) {
     const v = h.climb;
     h.x += (v.x - h.x) * Math.min(1, dt * 14);
     h.vy = U ? -K.climbV : D ? K.climbV : 0;
     h.y += h.vy * dt;
     if (h.y - K.heroH * 0.5 < v.top) h.y = v.top + K.heroH * 0.5;
+    if (U && v.plat && h.y <= v.plat.y + 8) { h.y = v.plat.y; h.on = v.plat; h.climb = null; h.vy = 0; } // のぼりきった → うえ の あしば に のる
     if (h.buffer > 0) {
       const bd = h.bufDir;
       h.buffer = 0; h.climb = null; h.vy = -K.jumpV * 0.9; h.airDir = bd == null ? 0 : bd;
@@ -198,7 +206,7 @@ function climbCheckHazards() {
   const bat = C.bats.find((b) => Math.abs(b.x - h.x) < 30 && b.y + Math.sin(C.t * 3 + b.ph) * 14 > top && b.y + Math.sin(C.t * 3 + b.ph) * 14 < h.y);
   const fire = C.firebars.some((f) => climbFireBalls(f, C.t).some(([x, y]) => x > l - 9 && x < r + 9 && y > top - 9 && y < h.y + 2));
   const wall = C.wall.on && h.y > C.wall.y - 4;
-  if (spike || bat || fire || wall) climbHurt(spike ? 'とげ' : bat ? 'こうもり' : fire ? 'ひのぼう' : 'せまる かべ');
+  if (spike || bat || fire || wall) climbHurt(spike ? 'とげ' : bat ? 'こうもり' : fire ? 'ひのぼう' : 'とげ の ゆか');
 }
 // ひのぼう の ひのたま の ばしょ
 function climbFireBalls(f, t) {

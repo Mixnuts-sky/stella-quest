@@ -376,3 +376,26 @@ html, body.stella { touch-action: manipulation; -webkit-text-size-adjust: 100%; 
 @keyframes critin { from { transform: translateX(-50%) scale(2.6) rotate(-8deg); opacity: 0; } 60% { transform: translateX(-50%) scale(.9) rotate(3deg); opacity: 1; } }
 
 .st-item-btn.battle-item { right: auto; left: 16px; bottom: 16px; z-index: 7; }
+
+/* ダッシュ ボタン（stella_dash.js）：ジャンプ の うえ・スタミナ の まる */
+.st-dash { position: absolute; right: 150px; bottom: 122px; z-index: 6; width: 84px; height: 62px; border-radius: 20px; font-family: var(--body); font-weight: 900; font-size: 15px; color: var(--ink); background: #ffe1c4; border: 4px solid var(--ink); box-shadow: 0 5px 0 rgba(58,42,77,.35); touch-action: none; cursor: pointer; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.st-dash[hidden] { display: none; }
+.st-dash:active, .st-dash.on { transform: translateY(3px); box-shadow: none; }
+.st-dash.empty { opacity: .55; }
+.st-dash .pips { display: flex; gap: 3px; }
+.st-dash .pips i { width: 9px; height: 9px; border-radius: 50%; background: #efe6f5; border: 1.5px solid var(--ink); }
+.st-dash .pips i.on { background: #ff7a3c; }
+@media (max-height: 430px) {
+  .st-dash { width: 74px; height: 54px; right: 118px; bottom: 100px; font-size: 13px; }
+}
+
+/* ためる こうげき・よける（stella_action.js、2026-11-14） */
+.act-bar.charge .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #ffd84a, #ff8a3c); }
+.act-timing.full .act-bar { box-shadow: 0 0 0 5px #fff3a0, 0 0 34px 12px #ffd84a; animation: nudge .3s ease-in-out infinite; }
+.act-timing.full .act-bar .fill { background: linear-gradient(90deg, #fff3a0, #ffd84a, #ff6fa8); }
+.act-dodge { align-items: flex-start; padding-top: 9vh; background: rgba(255,60,90,.06); }
+.act-dodge .act-arrow { font-size: 64px; }
+
+/* えいご：おおもじ ＝ あか・こもじ ＝ あお（stella_hoikuen.js の caseMark） */
+.case-up { color: #e8203c; font-weight: 900; background: #ffe3e8; border-radius: 8px; padding: 0 .25em; border-bottom: 3px solid #e8203c; }
+.case-lo { color: #1f6fe0; font-weight: 900; background: #e1efff; border-radius: 8px; padding: 0 .25em; border-bottom: 3px dashed #1f6fe0; }
