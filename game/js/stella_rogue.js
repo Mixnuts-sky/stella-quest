@@ -28,7 +28,8 @@ const RG_CONF = {
   deathBase: 0.001,         // 死神：10ぽ ごと の かくりつ（あるいた ほすう で ふえる）
   deathGrow: 60,            // この ほすう で かくりつ が もう 1ばい ぶん ふえる
   stepTime: 0.13, dashTime: 0.055, dashAfter: 0.38,
-  gaugeSteps: 60,           // ひっさつ ゲージ が まんたん に なる ほすう
+  jumpTime: 0.34,          // ジャンプ（2マス）に かかる びょう（stella_jump.js）
+  gaugeSteps: 120,          // ひっさつ ゲージ 3だん ぶん（stella_special.js が SP.stage × 3 で うわがき）
 };
 const RG_FLOOR_ITEMS = [['herb', 60], ['water', 22], ['churu', 18]];
 const RG_CHEST_ITEMS = [['revive', 34], ['wing', 20], ['churu', 24], ['water', 22]];
@@ -238,7 +239,7 @@ function rgStartFloor(diff, floor, opts = {}) {
 }
 function rgPlaceHero(p) {
   S.pos = { x: p.x, y: p.y }; S.from = { ...S.pos }; S.moveT = 1; S.facing = 1; S.mazeLock = 0; S.fall = null; S.stepsSinceBattle = 0;
-  RG.holdT = 0; RG.dash = false; RG.lock = 0;
+  RG.holdT = 0; RG.dash = false; RG.lock = 0; RG.climb = null; RG.jumping = false;
   if (typeof heldDirs !== 'undefined') heldDirs.length = 0;
   rgReveal();
 }
@@ -354,6 +355,7 @@ const rgHeroRoom = () => S.maze.roomOf[S.pos.y * S.maze.TW + S.pos.x];
 const baseMazeUpdateRG = mazeUpdate;
 mazeUpdate = function (dt) {
   if (!rgActive()) { baseMazeUpdateRG(dt); return; }
+  if (RG.climb && typeof climbUpdate === 'function') { climbUpdate(dt); return; } // おしろ のぼり（stella_climb.js）
   const M = S.maze;
   M.chests.forEach((c) => { if (c.opened && c.openT < 1) c.openT = Math.min(1, c.openT + dt * 3); });
   M.enemies.forEach((e) => { if (e.t < 1) e.t = Math.min(1, e.t + dt / (RG.dash ? RG_CONF.dashTime : RG_CONF.stepTime)); if (e.say) e.say.t += dt; });
@@ -363,10 +365,11 @@ mazeUpdate = function (dt) {
   if (RG.lock > 0) { RG.lock -= dt; return; }
   if (S.mazeLock > 0) { S.mazeLock -= dt; return; }
   if (S.moveT < 1) {
-    S.moveT = Math.min(1, S.moveT + dt / (RG.dash ? RG_CONF.dashTime : RG_CONF.stepTime));
+    S.moveT = Math.min(1, S.moveT + dt / (RG.jumping ? RG_CONF.jumpTime : RG.dash ? RG_CONF.dashTime : RG_CONF.stepTime));
     if (S.moveT >= 1) rgArrive();
     return;
   }
+  if (RG.heldBlock) heldDirs.length = 0; // みつかった あと：おしっぱなし は いちど はなす まで きかない
   const d = heldDirs[heldDirs.length - 1];
   if (!d) { RG.holdT = 0; RG.dash = false; RG.holdDir = null; return; }
   if (d !== RG.holdDir) { RG.holdDir = d; RG.holdT = 0; RG.dash = false; }
@@ -397,7 +400,7 @@ function rgArrive() {
   // かいだん・おしろ
   if (S.pos.x === M.goal.x && S.pos.y === M.goal.y) {
     heldDirs.length = 0;
-    if (M.last) { encounter({ boss: true }); return; }
+    if (M.last) { if (typeof climbStart === 'function' && climbStart()) return; encounter({ boss: true }); return; } // おしろ のぼり → ボス
     SFX.star();
     RG.lock = 0.6;
     later(0.4, () => rgNextFloor(false));
@@ -441,12 +444,22 @@ function rgArrive() {
   }
 }
 
+// てき に みつかった：ちゅなちゃん も とまる。おしっぱなし の キー は いちど はなす まで きかない
+function rgNoticeStop() {
+  heldDirs.length = 0; RG.dash = false; RG.lock = Math.max(RG.lock || 0, 0.3); RG.heldBlock = true;
+}
+addEventListener('keydown', (e) => {
+  if (RG.heldBlock && KEY_DIR[e.code]) { if (e.repeat) { e.preventDefault(); e.stopImmediatePropagation(); } else RG.heldBlock = false; }
+}, true);
+addEventListener('keyup', (e) => { if (KEY_DIR[e.code]) RG.heldBlock = false; }, true);
+
 // てき が 1かい うごく。たたかい に なったら true
 function rgWorldTurn() {
   const M = S.maze, TW = M.TW;
   const hd = rgBfs(M.grid, TW, M.TH, S.pos);
   const heroRoom = rgHeroRoom();
   const occupied = new Set(M.enemies.map((e) => e.y * TW + e.x));
+  if (typeof rgFeatBlocked === 'function') rgFeatBlocked().forEach((k) => occupied.add(k)); // がけ・しげみ には はいれない
   let hit = null;
   for (const e of M.enemies) {
     if (e.state === 'sleep') continue;
@@ -455,7 +468,7 @@ function rgWorldTurn() {
     if (e.state === 'wander' && dh >= 0 && ((heroRoom >= 0 && M.roomOf[k] === heroRoom) || dh <= 3)) {
       e.state = e.kind === 'shima' ? 'flee' : 'chase';
       if (e.kind === 'shima' && !e.said) { e.said = true; e.say = { t: 0 }; heldDirs.length = 0; rgShimaVoice(); }
-      if (e.kind === 'normal') { e.alert = { t: 0 }; note(880, 0, 0.08, { type: 'square', vol: 0.04 }); if (RG.dash) heldDirs.length = 0; continue; } // みつけた ターン は うごかない（よける じかん）
+      if (e.kind === 'normal') { e.alert = { t: 0 }; note(880, 0, 0.08, { type: 'square', vol: 0.04 }); rgNoticeStop(); continue; } // みつけた ターン は てき も ちゅなちゃん も とまる（よける じかん）
     }
     let next = null;
     if (e.state === 'chase') {
@@ -644,6 +657,7 @@ function rgItemImg(id) {
 const baseDrawMazeRG = drawMaze;
 drawMaze = function () {
   if (!rgActive()) { baseDrawMazeRG(); return; }
+  if (RG.climb && typeof climbDraw === 'function') { climbDraw(); return; }
   const M = S.maze, th = THEMES[S.level] || THEMES[1], T = 48, TW = M.TW;
   const ease = (t) => (t < 1 ? (1 - Math.cos(t * Math.PI)) / 2 : 1);
   const k = ease(S.moveT);
@@ -675,6 +689,7 @@ drawMaze = function () {
   const shown = (o) => M.fog[o.y * TW + o.x] && o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1;
   // みつけた おとしあな
   M.pits.forEach((p) => { if (!p.found || !shown(p)) return; ctx.fillStyle = '#1a0f2a'; ctx.beginPath(); ctx.ellipse(p.x * T + T / 2, p.y * T + T / 2 + 3, T * 0.4, T * 0.3, 0, 0, 7); ctx.fill(); ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 3; ctx.stroke(); });
+  if (typeof rgFeatDraw === 'function') rgFeatDraw(shown, T); // がけ・しげみ（stella_jump.js）
   // アイテム
   M.items.forEach((o) => {
     if (!shown(o)) return;
@@ -700,6 +715,7 @@ drawMaze = function () {
     objs.push({ y: ey, draw: () => rgDrawEnemy(e, ex, ey, T) });
   });
   if (M.rest && typeof rgRestObjs === 'function') rgRestObjs(objs, T); // やすみ の かい（stella_endless.js）
+  if (typeof rgPartyObjs === 'function') rgPartyObjs(objs, T, ease); // なかま（stella_party.js）
   objs.push({ y: hy, draw: () => rgDrawHero(hx, hy, T) });
   if (M.death) {
     const D = M.death, dk = ease(D.t), dx = D.fx + (D.x - D.fx) * dk, dy = D.fy + (D.y - D.fy) * dk;
@@ -729,7 +745,7 @@ function rgDrawStairs(gx, gy, T) {
   outlinedText('かいだん', gx + T / 2, gy - 8, 13, '#ffd84a');
 }
 function rgDrawHero(hx, hy, T) {
-  let bob = S.moveT < 1 ? Math.abs(Math.sin(S.moveT * Math.PI)) * 5 : Math.sin(S.t * 3) * 1.5, sc = 1;
+  let bob = S.moveT < 1 ? (RG.jumping ? Math.sin(S.moveT * Math.PI) * T * 0.9 : Math.abs(Math.sin(S.moveT * Math.PI)) * 5) : Math.sin(S.t * 3) * 1.5, sc = 1;
   if (S.fall) { S.fall.t += 1 / 60; const k2 = Math.min(1, S.fall.t / 0.6); sc = 1 - k2 * 0.8; bob = -k2 * 20; }
   const sx = hx * T + T / 2, sy = hy * T + T * 0.92 - bob;
   ctx.fillStyle = 'rgba(30,10,50,.25)'; ctx.beginPath(); ctx.ellipse(sx, hy * T + T * 0.9, T * 0.32, 6, 0, 0, 7); ctx.fill();
@@ -802,6 +818,7 @@ function rgDrawMinimap() {
   M.items.forEach((o) => { if (M.fog[o.y * M.TW + o.x]) dot(o, '#4ecbff'); });
   M.chests.forEach((c) => { if (M.fog[c.y * M.TW + c.x] && !c.opened) dot(c, '#ffc93c', 1.4); });
   M.pits.forEach((p) => { if (p.found) dot(p, '#ff5c8a'); });
+  if (typeof rgFeatMini === 'function') rgFeatMini(dot);
   if (M.fog[M.goal.y * M.TW + M.goal.x]) {
     if (M.last) drawStar(x + M.goal.x * cell + cell / 2, y + M.goal.y * cell + cell / 2, cell * 2.4, '#ff4f6a');
     else dot(M.goal, '#ffd84a', 2);

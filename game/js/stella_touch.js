@@ -3,6 +3,7 @@
 //  ・ひだりした：十字ボタン（#stPad）
 //  ・みぎした：おおきい ボタン（#stOk）。まち・たてもの では「しらべる」、ダンジョン では「ひっさつ」
 //  ・その うえ：ちいさい「アイテム」ボタン（#stItemBtn）→ アイテム がめん（stella_items.js）
+//  ・ダンジョン では ひだり に「ジャンプ」ボタン（#stJump、スペース キー）（stella_jump.js・stella_climb.js）
 //  ボタンは キーボードの キー（やじるし・Enter）の イベントを つくって ながすだけ なので、
 //  あるく しくみ（stella_town.js / stella_interior.js / maze.js）は キーボードと おなじ。
 //  しよう：docs/GAME_SPEC.md 9.9・14.1
@@ -14,6 +15,7 @@ const TOUCH_KEYS = {
   up: { key: 'ArrowUp', code: 'ArrowUp' }, down: { key: 'ArrowDown', code: 'ArrowDown' },
   left: { key: 'ArrowLeft', code: 'ArrowLeft' }, right: { key: 'ArrowRight', code: 'ArrowRight' },
   ok: { key: 'Enter', code: 'Enter' },
+  jump: { key: ' ', code: 'Space' },
 };
 function touchKey(type, name) {
   const k = TOUCH_KEYS[name];
@@ -40,9 +42,11 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
   const itemBtn = document.createElement('button');
   itemBtn.id = 'stItemBtn'; itemBtn.type = 'button'; itemBtn.className = 'st-item-btn'; itemBtn.hidden = true;
   itemBtn.innerHTML = '🎒 アイテム';
-  game.appendChild(pad); game.appendChild(ok); game.appendChild(itemBtn);
+  const jump = document.createElement('button');
+  jump.id = 'stJump'; jump.type = 'button'; jump.className = 'st-jump'; jump.hidden = true; jump.dataset.k = 'jump'; jump.textContent = 'ジャンプ';
+  game.appendChild(pad); game.appendChild(ok); game.appendChild(itemBtn); game.appendChild(jump);
 
-  [...pad.querySelectorAll('button'), ok].forEach((b) => {
+  [...pad.querySelectorAll('button'), ok, jump].forEach((b) => {
     let down = false;
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -65,14 +69,17 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
     const key = `${show}|${dg}`;
     if (key !== last) {
       pad.hidden = ok.hidden = itemBtn.hidden = !show;
+      jump.hidden = !(show && dg);
       ok.classList.toggle('special', dg);
       ok.querySelector('.lbl').textContent = dg ? 'ひっさつ' : 'しらべる';
       last = key;
     }
     if (dg && typeof specialGauge === 'function') {
       const g = specialGauge();
+      const lv = typeof specialLevel === 'function' ? specialLevel() : (g >= 1 ? 1 : 0), lbl = lv ? `ひっさつ ${'★'.repeat(lv)}` : 'ひっさつ';
       ok.querySelector('.gauge i').style.width = `${Math.round(g * 100)}%`;
-      ok.classList.toggle('full', g >= 1);
+      ok.classList.toggle('full', lv >= 1);
+      const le = ok.querySelector('.lbl'); if (le.textContent !== lbl) le.textContent = lbl;
     }
     requestAnimationFrame(sync);
   };

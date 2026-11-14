@@ -112,22 +112,22 @@ function useFromPanel() {
 }
 
 // ---------------------------------------------------------------------
-//  たたかい の なか：1かい だけ アイテム（かいふく・チュール）
+//  たたかい の なか：1もん に 1かい アイテム（かいふく・チュール）
 // ---------------------------------------------------------------------
-const canBattleItem = () => !!(ST.data && ST.battle && !ST.battle.practice && S.mode === 'question' && S.monster && !S.monster.nanmon && !S.monster.itemUsed);
+const canBattleItem = () => !!(ST.data && ST.battle && !ST.battle.practice && S.mode === 'question' && S.monster && !S.monster.nanmon && S.monster.itemQ !== S.q);
 function battleUseItem(i) {
   const m = S.monster, items = ST.data.items, id = items[i];
   if (!m || !id) return;
   if (id === 'herb' || id === 'water') {
     if (S.hp >= stMaxHp()) { showToast('HPは まんたん だよ'); return; }
-    items.splice(i, 1); m.itemUsed = true;
+    items.splice(i, 1); m.itemQ = S.q;
     S.hp = id === 'herb' ? Math.min(stMaxHp(), S.hp + 1) : stMaxHp(); ST.data.hp = S.hp;
     closeItemPanel(); healEffect(); renderHud();
     showToast(id === 'herb' ? 'かいじるカレー を たべた！ HPが 1 かいふく！' : 'おおもり かいじるカレー を たべた！ HPが まんたん！', 2.4);
     return;
   }
   if (id === 'churu') {
-    items.splice(i, 1); m.itemUsed = true;
+    items.splice(i, 1); m.itemQ = S.q;
     closeItemPanel();
     if (m.boss) { // ボス には せいかい 1かい ぶん の ダメージ
       const dmg = heroAtk() + (typeof staffPlus === 'function' ? staffPlus() : 0);
@@ -150,7 +150,7 @@ function battleUseItem(i) {
 }
 (function battleItemButton() {
   const b = document.createElement('button');
-  b.id = 'battleItemBtn'; b.type = 'button'; b.className = 'st-item-btn battle-item'; b.hidden = true; b.textContent = '🎒 アイテム（1かい）';
+  b.id = 'battleItemBtn'; b.type = 'button'; b.className = 'st-item-btn battle-item'; b.hidden = true; b.textContent = '🎒 アイテム';
   $('game').appendChild(b);
   b.addEventListener('click', () => { openItemPanel(); b.blur(); });
   setInterval(() => { b.hidden = !canBattleItem() || ITEMUI.open; }, 150);

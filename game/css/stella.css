@@ -228,12 +228,19 @@ body.stella #itemBar, body.stella #dpad { display: none !important; }
 .st-ok .gauge { display: none; width: 64px; height: 10px; border: 2px solid var(--ink); border-radius: 999px; background: #efe6f5; overflow: hidden; }
 .st-ok .gauge i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb3d1, #ff6fa8); }
 .st-ok.special { background: #efe6f5; color: #9a8aac; }
-.st-ok.special .gauge { display: block; }
+.st-ok.special .gauge { display: block; position: relative; }
+.st-ok.special .gauge::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent calc(33.3% - 1px), var(--ink) calc(33.3% - 1px), var(--ink) calc(33.3% + 1px), transparent calc(33.3% + 1px), transparent calc(66.6% - 1px), var(--ink) calc(66.6% - 1px), var(--ink) calc(66.6% + 1px), transparent calc(66.6% + 1px)); }
 .st-ok.special.full { background: radial-gradient(circle, #fff7d6, #ffd84a); color: var(--ink); animation: okglow 1s ease-in-out infinite; }
 .st-ok.special.full .gauge i { background: linear-gradient(90deg, #ffd84a, #ff8a3c); }
 @keyframes okglow { 50% { box-shadow: 0 5px 0 rgba(58,42,77,.35), 0 0 26px 8px rgba(255,216,74,.85); } }
 .st-item-btn { position: absolute; right: 22px; bottom: 142px; z-index: 6; font-family: var(--body); font-weight: 900; font-size: 15px; color: var(--ink); background: #fffaf3; border: 3px solid var(--ink); border-radius: 999px; padding: 6px 14px; box-shadow: 0 4px 0 rgba(58,42,77,.35); cursor: pointer; }
 .st-item-btn:active { transform: translateY(2px); box-shadow: none; }
+/* ジャンプ（stella_jump.js・stella_climb.js） */
+.st-jump { position: absolute; right: 140px; bottom: 26px; z-index: 6; width: 84px; height: 84px; border-radius: 50%; font-family: var(--body); font-weight: 900; font-size: 16px; color: var(--ink); background: #d9f5ff; border: 4px solid var(--ink); box-shadow: 0 5px 0 rgba(58,42,77,.35); touch-action: none; cursor: pointer; padding: 0; }
+.st-jump:active { transform: translateY(3px); box-shadow: none; }
+/* みなり の なぞなぞ ヒント（stella_party.js） */
+.minari-hint { margin-top: 8px; text-align: center; font-weight: 900; color: #e2588f; }
+.riddle-choices button.hinted { opacity: .35; text-decoration: line-through; }
 .st-talk { right: 18px; bottom: 192px; }
 body.touch .st-talk small { display: none; }
 .item-panel { z-index: 9; }
@@ -254,6 +261,7 @@ body.touch .st-talk small { display: none; }
 @media (max-height: 430px) {
   .st-ok { width: 92px; height: 92px; bottom: 14px; right: 14px; font-size: 18px; }
   .st-item-btn { bottom: 116px; right: 16px; }
+  .st-jump { width: 74px; height: 74px; right: 118px; bottom: 16px; font-size: 14px; }
   .st-talk { bottom: 160px; }
   .islot { height: 70px; }
   .islot svg { width: 32px; height: 32px; }
@@ -266,12 +274,18 @@ body.touch .st-talk small { display: none; }
 .sp-card { width: min(94vw, 760px); }
 .sp-body { display: flex; gap: 18px; align-items: center; justify-content: center; }
 .sp-draw { width: min(52vh, 340px); aspect-ratio: 1; background: radial-gradient(circle, #3a2a7a, #1a1446); border: 4px solid var(--ink); border-radius: 24px; touch-action: none; cursor: crosshair; }
-.sp-list { display: flex; flex-direction: column; gap: 10px; }
-.sp-ex { display: grid; grid-template-columns: 44px auto; grid-template-rows: auto auto; column-gap: 8px; align-items: center; font-weight: 900; }
-.sp-ex svg { grid-row: span 2; width: 44px; height: 44px; background: #2a1d3a; border-radius: 10px; }
-.sp-ex b { font-size: 17px; }
-.sp-ex small { font-size: 12px; color: #7a6890; }
-@media (max-height: 430px) { .sp-draw { width: min(56vh, 220px); } .sp-ex small { display: none; } }
+.sp-list { display: flex; flex-direction: column; gap: 8px; }
+.sp-row { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 14px; background: #f6effb; }
+.sp-row.lock { opacity: .38; filter: grayscale(.7); }
+.sp-lvtag { color: #e8a400; font-size: 13px; font-weight: 900; line-height: 1.05; word-break: break-all; text-align: center; }
+.sp-stars { color: #e8a400; letter-spacing: 2px; }
+.sp-ex { display: grid; grid-template-columns: 40px auto; grid-template-rows: auto auto; column-gap: 6px; align-items: center; font-weight: 900; }
+.sp-ex svg { grid-row: span 2; width: 40px; height: 40px; background: #2a1d3a; border-radius: 10px; }
+.sp-ex b { font-size: 14px; }
+.sp-ex small { font-size: 11px; color: #7a6890; line-height: 1.2; }
+.sp-foot { display: flex; gap: 8px; justify-content: center; }
+.sp-foot button:disabled { opacity: .4; }
+@media (max-height: 430px) { .sp-draw { width: min(56vh, 220px); } .sp-ex small { display: none; } .sp-row { padding: 3px 6px; } }
 
 /* たたかい の アクション（stella_action.js） */
 .act-layer { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center; touch-action: none; }
