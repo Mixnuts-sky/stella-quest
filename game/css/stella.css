@@ -237,7 +237,7 @@ body.stella #itemBar, body.stella #dpad { display: none !important; }
 .st-item-btn:active { transform: translateY(2px); box-shadow: none; }
 /* ジャンプ（stella_jump.js・stella_climb.js） */
 .st-jump { position: absolute; right: 140px; bottom: 26px; z-index: 6; width: 84px; height: 84px; border-radius: 50%; font-family: var(--body); font-weight: 900; font-size: 16px; color: var(--ink); background: #d9f5ff; border: 4px solid var(--ink); box-shadow: 0 5px 0 rgba(58,42,77,.35); touch-action: none; cursor: pointer; padding: 0; }
-.st-jump:active { transform: translateY(3px); box-shadow: none; }
+.st-jump:active, .st-jump.on { transform: translateY(3px); box-shadow: none; }
 /* みなり の なぞなぞ ヒント（stella_party.js） */
 .minari-hint { margin-top: 8px; text-align: center; font-weight: 900; color: #e2588f; }
 .riddle-choices button.hinted { opacity: .35; text-decoration: line-through; }
@@ -285,6 +285,7 @@ body.touch .st-talk small { display: none; }
 .sp-ex small { font-size: 11px; color: #7a6890; line-height: 1.2; }
 .sp-foot { display: flex; gap: 8px; justify-content: center; }
 .sp-foot button:disabled { opacity: .4; }
+.sp-foot .sp-go { background: #ffd84a; font-size: 1.15em; padding-left: 22px; padding-right: 22px; }
 @media (max-height: 430px) { .sp-draw { width: min(56vh, 220px); } .sp-ex small { display: none; } .sp-row { padding: 3px 6px; } }
 
 /* たたかい の アクション（stella_action.js） */

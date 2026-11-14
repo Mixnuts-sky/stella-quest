@@ -98,7 +98,7 @@ const baseEncounterPace = encounter;
 encounter = function (opts = {}) {
   baseEncounterPace(opts);
   const m = S.monster;
-  if (m && !m.boss && String(m.name).includes('うぇーおー')) later(0.55, () => { if (S.monster === m) weoVoice(); });
+  if (m && !m.boss) later(0.55, () => { if (S.monster === m && String(m.name).includes('うぇーおー')) weoVoice(); }); // なまえ は あとから かわる ことが ある（ふしぎな ダンジョン）
 };
 // こえの ふきだし（てき の あたま の うえ）
 const baseDrawMonsterPace = drawMonster;

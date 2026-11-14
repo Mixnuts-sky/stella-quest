@@ -2,7 +2,7 @@
 // =====================================================================
 //  ステラクエスト：ひっさつ わざ（ふしぎな ダンジョン）＝ まほうじん
 //  ・あるくと ゲージ が たまる。SP.stage ほ ごと に 1だん、さいだい 3だん
-//  ・ひっさつ ボタン（Enter）→ さいしょ に おおきな ○（まほうじん）→ なか に かたち
+//  ・ひっさつ ボタン（Enter）→ さいしょ に おおきな ○（まほうじん）→ なか に かたち →「はつどう」ボタン（Enter）で きまる
 //      1だん：○ だけ ＝ HP ぜんかいふく ／ ○＋△ ＝ ほのお が いちばん ちかい てき を 1ぴき たおす
 //      2だん：○＋☆ ＝ がめん に みえる てき を ぜんぶ たおす ／ ○＋× ＝ ちがう へや へ ワープ
 //      3だん：○＋ちいさい○＋△3つ（め の かたち は かいても よい）＝ にゃんこ が かけめぐって ちず と アイテム が ぜんぶ わかる
@@ -12,7 +12,7 @@
 //  stella_rogue.js の あと に よむ。しよう：docs/GAME_SPEC.md 14.7
 // =====================================================================
 
-const SP = { stage: 40, groupMs: 1000, waitMore: 3000 }; // 1だん に いる ほすう・なか の かたち を かきおわった と みる まで
+const SP = { stage: 80 }; // 1だん に いる ほすう
 RG_CONF.gaugeSteps = SP.stage * 3;
 const SP_MOVES = {
   heal:  { lv: 1, name: 'きらきら ヒール',       inner: null,     label: 'まる だけ',          desc: 'HP を ぜんぶ かいふく',               color: '#4ecbff', dur: 1.4 },
@@ -79,16 +79,16 @@ const spIcon = (kind, color) => {
       <div class="sp-list" id="spList"></div>
     </div>
     <div class="sp-msg" id="spMsg"></div>
-    <div class="shop-foot sp-foot"><button type="button" class="buy heal" id="spHeal">まる だけ で かいふく</button><button type="button" class="redo" id="spRedo">かきなおす</button><button type="button" class="close">やめる（Esc）</button></div>
+    <div class="shop-foot sp-foot"><button type="button" class="buy sp-go" id="spGo">はつどう！（Enter）</button><button type="button" class="redo" id="spRedo">かきなおす</button><button type="button" class="close">やめる（Esc）</button></div>
   </div>`;
   $('game').appendChild(el);
   el.querySelector('.close').addEventListener('click', closeSpecial);
-  $('spHeal').addEventListener('click', () => { if (SPECIAL.ring) spTryCast('heal'); });
-  $('spRedo').addEventListener('click', () => { SPECIAL.ring = null; SPECIAL.strokes = []; clearTimeout(SPECIAL.timer); spMsg('まず おおきな まる（まほうじん）を かいてね'); spSyncButtons(); });
+  $('spGo').addEventListener('click', spJudge);
+  $('spRedo').addEventListener('click', () => { SPECIAL.ring = null; SPECIAL.strokes = []; spMsg('まず おおきな まる（まほうじん）を かいてね'); spSyncButtons(); });
   const cv = el.querySelector('#spCanvas');
   const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
   cv.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); clearTimeout(SPECIAL.timer);
+    e.preventDefault();
     SPECIAL.cur = [pos(e)];
     try { cv.setPointerCapture(e.pointerId); } catch { /* なし */ }
   });
@@ -103,27 +103,23 @@ const spIcon = (kind, color) => {
     SPECIAL.cur = null;
     if (!SPECIAL.ring) { // さいしょ は まる
       const f = spFeat(s);
-      if (spClassify(f) !== 'circle') { spMsg('まず おおきな まる（まほうじん）を かいてね', true); SFX.bad(); return; }
+      if (!spRingOk(f)) { spMsg('まず おおきな まる（まほうじん）を かいてね', true); SFX.bad(); return; }
       if (f.r < cv.width * 0.18) { spMsg('もっと おおきな まる に してね', true); SFX.bad(); return; }
       SPECIAL.ring = { x: f.cx, y: f.cy, r: f.r };
       [659, 880, 1175].forEach((fq, i) => note(fq, i * 0.07, 0.2, { type: 'sine', vol: 0.07 }));
-      spMsg('まほうじん が できた！ なか に かたち を かいてね');
+      spMsg('まほうじん が できた！ なか に かたち を かいて「はつどう」（なにも かかない と かいふく）');
       spSyncButtons();
       return;
     }
     SPECIAL.strokes.push(s);
-    // とちゅう（ちいさい まる・しかく だけ）なら ながめ に まつ
-    const ks = SPECIAL.strokes.map((q) => spClassify(spFeat(q)));
-    const more = (ks.includes('circle') && spClassifyInner(SPECIAL.strokes) !== 'cat') || (ks.includes('square') && !ks.includes('swirl'));
-    if (more) spMsg('つづけて かいてね……');
-    SPECIAL.timer = setTimeout(spJudge, more ? SP.waitMore : SP.groupMs);
+    spMsg('かけたら「はつどう！」を おしてね');
   };
   ['pointerup', 'pointercancel'].forEach((ev) => cv.addEventListener(ev, end));
 })();
 
 function spMsg(t, bad = false) { $('spMsg').textContent = t; $('spMsg').className = bad ? 'sp-msg bad' : 'sp-msg'; }
 function spSyncButtons() {
-  $('spHeal').disabled = !SPECIAL.ring;
+  $('spGo').disabled = !SPECIAL.ring;
   $('spRedo').disabled = !SPECIAL.ring;
 }
 function spRenderList() {
@@ -158,25 +154,25 @@ function openSpecial() {
     return;
   }
   RG.special = true; heldDirs.length = 0;
-  SPECIAL.strokes = []; SPECIAL.cur = null; SPECIAL.ring = null; clearTimeout(SPECIAL.timer);
+  SPECIAL.strokes = []; SPECIAL.cur = null; SPECIAL.ring = null;
   spMsg('まず おおきな まる（まほうじん）を かいてね');
   spRenderList(); spSyncButtons();
   $('spPanel').hidden = false;
   cancelAnimationFrame(SPECIAL.raf); spDrawPanel();
   [784, 988, 1175].forEach((f, i) => note(f, i * 0.08, 0.2, { type: 'sine', vol: 0.07 }));
 }
-function closeSpecial() { RG.special = false; clearTimeout(SPECIAL.timer); $('spPanel').hidden = true; cancelAnimationFrame(SPECIAL.raf); }
+function closeSpecial() { RG.special = false; $('spPanel').hidden = true; cancelAnimationFrame(SPECIAL.raf); }
 
-// なか の かたち を かきおわった → わざ を きめる
+// 「はつどう」→ なか の かたち で わざ を きめる（なにも かいて いない ＝ かいふく）
 function spJudge() {
-  const move = spClassifyInner(SPECIAL.strokes);
-  SPECIAL.strokes = [];
-  if (!move) { spMsg('う〜ん、わからない かたち……もういちど！', true); SFX.bad(); return; }
+  if (!SPECIAL.ring) { spMsg('まず おおきな まる（まほうじん）を かいてね', true); SFX.bad(); return; }
+  const move = SPECIAL.strokes.length ? spClassifyInner(SPECIAL.strokes) : 'heal';
+  if (!move) { SPECIAL.strokes = []; spMsg('う〜ん、わからない かたち……なか を もういちど かいてね', true); SFX.bad(); return; }
   spTryCast(move);
 }
 function spTryCast(move) {
   const mv = SP_MOVES[move];
-  if (specialLevel() < mv.lv) { spMsg(`「${mv.name}」は ゲージ が ${'★'.repeat(mv.lv)} いるよ`, true); SFX.bad(); return; }
+  if (specialLevel() < mv.lv) { SPECIAL.strokes = []; spMsg(`「${mv.name}」は ゲージ が ${'★'.repeat(mv.lv)} いるよ`, true); SFX.bad(); return; }
   castSpecial(move);
 }
 
@@ -237,11 +233,14 @@ function spFeat(raw) {
   for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; area += a[0] * b[1] - b[0] * a[1]; }
   return { closed, corners, dev, cross, fill: Math.abs(area) / 2 / ((w * h) || 1), wind: Math.abs(wind), straight: ends / len, cx, cy, r, w, h, a: raw[0], b: raw[raw.length - 1] };
 }
+// さいしょ の おおきな まる（かさねて かいて も よい）
+const spRingOk = (f) => !!f && (spClassify(f) === 'circle' || (f.dev < 0.3 && Math.min(f.w, f.h) / Math.max(f.w, f.h) > 0.5 && (f.closed || f.wind > Math.PI * 1.6)));
 function spClassify(f) {
   if (!f) return null;
   if (f.straight > 0.85 && !f.closed) return 'line';
-  if (!f.closed) return f.wind > Math.PI * 2.6 ? 'swirl' : null;
-  if (f.cross >= 3) return 'star';
+  if (f.cross >= 3 || (f.cross >= 2 && f.closed && f.corners >= 4)) return 'star';
+  if (f.cross <= 2 && f.wind > Math.PI * (f.closed ? 3.0 : 2.2) && f.dev > 0.18) return 'swirl'; // うずまき（さいご が もどって きて も よい）
+  if (!f.closed) return null;
   if (f.fill < 0.66 && f.corners >= 2) return 'tri';
   if (f.fill > 0.86 || (f.corners >= 2 && f.fill > 0.7)) return 'square';
   if (f.dev < 0.3 && Math.min(f.w, f.h) / Math.max(f.w, f.h) > 0.5) return 'circle';
@@ -250,12 +249,14 @@ function spClassify(f) {
 }
 function spClassifyInner(strokes) {
   const fs = strokes.map(spFeat), ks = fs.map(spClassify);
-  if (ks.includes('swirl') && ks.every((k) => k === 'swirl' || k === 'square')) return 'blaze'; // うずまき（□ も いっしょ で よい）
-  const cnt = (k) => ks.filter((x) => x === k).length;
-  if (cnt('circle') >= 1 && cnt('tri') >= 3 && ks.length - cnt('circle') - cnt('tri') <= 2) return 'cat'; // にゃんこ：ちいさい まる ＋ さんかく 3つ（め は なんでも）
+  const cnt = (k) => ks.filter((x) => x === k).length, poly = cnt('tri') + cnt('square');
+  // にゃんこ：ちいさい まる ＋ さんかく 3つ（め は なんでも）。すこし くずれて いても よい
+  if (cnt('tri') >= 3 || (ks.length >= 3 && cnt('circle') >= 1 && cnt('tri') >= 2) || (ks.length >= 4 && poly >= 2)) return 'cat';
+  if (ks.includes('swirl') && ks.length <= 3) return 'blaze'; // うずまき（□ も いっしょ で よい）
   if (ks.length === 1) return { tri: 'fire', star: 'star' }[ks[0]] || null;
   if (ks.length === 2) {
-    if (ks[0] === 'line' && ks[1] === 'line' && spSegX(fs[0].a, fs[0].b, fs[1].a, fs[1].b)) return 'warp';
+    const lineish = (f) => !!f && !f.closed && f.straight > 0.7;
+    if (lineish(fs[0]) && lineish(fs[1]) && spSegX(fs[0].a, fs[0].b, fs[1].a, fs[1].b)) return 'warp';
   }
   return null;
 }
@@ -397,6 +398,7 @@ function drawSpecialFx() {
 addEventListener('keydown', (e) => {
   if (RG.special) {
     if (e.key === 'Escape') { closeSpecial(); e.preventDefault(); }
+    else if ((e.key === 'Enter' || e.code === 'NumpadEnter') && !e.repeat) { spJudge(); e.preventDefault(); }
     e.stopImmediatePropagation();
     return;
   }

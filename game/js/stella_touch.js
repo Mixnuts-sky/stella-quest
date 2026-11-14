@@ -4,6 +4,8 @@
 //  ・みぎした：おおきい ボタン（#stOk）。まち・たてもの では「しらべる」、ダンジョン では「ひっさつ」
 //  ・その うえ：ちいさい「アイテム」ボタン（#stItemBtn）→ アイテム がめん（stella_items.js）
 //  ・ダンジョン では ひだり に「ジャンプ」ボタン（#stJump、スペース キー）（stella_jump.js・stella_climb.js）
+//    ジャンプ ボタン を フリック すると その むき に とぶ（タップ は いま むいて いる ほう）
+//  ・おしろ のぼり では ひっさつ ボタン を ださない
 //  ボタンは キーボードの キー（やじるし・Enter）の イベントを つくって ながすだけ なので、
 //  あるく しくみ（stella_town.js / stella_interior.js / maze.js）は キーボードと おなじ。
 //  しよう：docs/GAME_SPEC.md 9.9・14.1
@@ -46,7 +48,33 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
   jump.id = 'stJump'; jump.type = 'button'; jump.className = 'st-jump'; jump.hidden = true; jump.dataset.k = 'jump'; jump.textContent = 'ジャンプ';
   game.appendChild(pad); game.appendChild(ok); game.appendChild(itemBtn); game.appendChild(jump);
 
-  [...pad.querySelectorAll('button'), ok, jump].forEach((b) => {
+  // ジャンプ：フリック した むき に とぶ。タップ は いま の むき
+  (function jumpFlick() {
+    let st = null;
+    const fire = (dir) => {
+      if (!st || st.fired) return;
+      st.fired = true; jump.classList.add('on');
+      if (dir && typeof stJumpFlick === 'function') stJumpFlick(dir);
+      else { touchKey('keydown', 'jump'); touchKey('keyup', 'jump'); }
+    };
+    jump.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (typeof audio === 'function') audio();
+      st = { x: e.clientX, y: e.clientY, fired: false };
+      try { jump.setPointerCapture(e.pointerId); } catch { /* なにもしない */ }
+    });
+    jump.addEventListener('pointermove', (e) => {
+      if (!st || st.fired) return;
+      const dx = e.clientX - st.x, dy = e.clientY - st.y;
+      if (Math.hypot(dx, dy) < 22) return;
+      fire(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    });
+    const up = () => { if (!st) return; fire(null); st = null; jump.classList.remove('on'); };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => jump.addEventListener(ev, up));
+    jump.addEventListener('contextmenu', (e) => e.preventDefault());
+  })();
+
+  [...pad.querySelectorAll('button'), ok].forEach((b) => {
     let down = false;
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -65,10 +93,11 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
   const sync = () => {
     const panelOpen = (typeof ITEMUI !== 'undefined' && ITEMUI.open) || (typeof RG !== 'undefined' && RG.special);
     const show = ctlWalkScene() && !panelOpen;
-    const dg = ctlInDungeonWalk();
-    const key = `${show}|${dg}`;
+    const dg = ctlInDungeonWalk(), climb = typeof RG !== 'undefined' && !!RG.climb;
+    const key = `${show}|${dg}|${climb}`;
     if (key !== last) {
-      pad.hidden = ok.hidden = itemBtn.hidden = !show;
+      pad.hidden = itemBtn.hidden = !show;
+      ok.hidden = !show || climb;
       jump.hidden = !(show && dg);
       ok.classList.toggle('special', dg);
       ok.querySelector('.lbl').textContent = dg ? 'ひっさつ' : 'しらべる';
@@ -85,6 +114,15 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
   };
   requestAnimationFrame(sync);
 })();
+
+// ジャンプ ボタン を フリック した ときの ジャンプ（dir：up・down・left・right）
+function stJumpFlick(dir) {
+  if (typeof RG !== 'undefined' && RG.climb) { if (typeof climbJump === 'function') climbJump(dir); return; }
+  if (typeof rgJump !== 'function' || !rgActive() || S.mode !== 'walk' || S.monster || RG.special || S.moveT < 1) return;
+  S.dir = dir;
+  if (dir === 'left') S.facing = -1; else if (dir === 'right') S.facing = 1;
+  rgJump();
+}
 
 // たてむき の とき は「よこに してね」
 (function rotateHint() {

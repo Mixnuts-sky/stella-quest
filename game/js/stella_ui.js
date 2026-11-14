@@ -4,7 +4,7 @@
 //  ・iPhone：れんだ・ダブルタップ で がめん が おおきく ならない ように
 //  ・おんがく「ごせんふ に おく」：▲▼ ボタン で おんぷ を うえ・した（タッチ が ずれる とき）
 //  ・わざ の なまえ の ふきだし：HP と かお に かさならない ように ちゅなちゃん の うえ へ、さきっぽ なし
-//  ・がめん の どこ でも スワイプ で「つぎへ」（Enter と おなじ）
+//  ・がめん の どこ でも スワイプ で「つぎへ」（Enter と おなじ）。こたえた あと は タップ でも よい
 //  stella_action.js の あと に よむ。しよう：docs/GAME_SPEC.md 15.9
 // =====================================================================
 
@@ -58,11 +58,18 @@ drawSpeech = function (lines, o) {
   let st = null;
   const busy = () => (typeof ACT !== 'undefined' && (ACT.dodge || ACT.aim || ACT.mash || ACT.timing)) || (typeof ITEMUI !== 'undefined' && ITEMUI.open) || (typeof RG !== 'undefined' && RG.special);
   const skip = (t) => t.closest && t.closest('#padCanvas, #engCanvas, #spCanvas, #staffBox, button, .act-layer, #stItemPanel, #spPanel, .st-card, input');
-  addEventListener('pointerdown', (e) => { st = skip(e.target) ? null : { x: e.clientX, y: e.clientY, t: performance.now() }; }, true);
+  // こたえた あと の「つぎへ」は がめん の どこ を タップ しても よい（ボタン と パネル は のぞく）
+  const skipTap = (t) => t.closest && t.closest('button, .act-layer, #stItemPanel, #spPanel, .st-card, input, .overlay:not([hidden])');
+  addEventListener('pointerdown', (e) => {
+    const tap = !!S.waitEnter && !skipTap(e.target);
+    st = skip(e.target) && !tap ? null : { x: e.clientX, y: e.clientY, t: performance.now(), tap };
+    if (tap) e.stopPropagation(); // した の もの（かく パッド など）には わたさない
+  }, true);
   addEventListener('pointerup', (e) => {
     if (!st) return;
-    const dx = e.clientX - st.x, dy = e.clientY - st.y, fast = performance.now() - st.t < 700;
+    const dx = e.clientX - st.x, dy = e.clientY - st.y, fast = performance.now() - st.t < 700, tap = st.tap;
     st = null;
+    if (tap && S.waitEnter && !busy()) { e.preventDefault(); e.stopPropagation(); proceed(); return; }
     if (!fast || Math.hypot(dx, dy) < 60 || busy()) return;
     if (S.waitEnter) { proceed(); return; }
     if (S.mode === 'dialog' && typeof advanceDialog === 'function') advanceDialog();
