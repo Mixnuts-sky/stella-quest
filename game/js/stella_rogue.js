@@ -342,7 +342,7 @@ function rgReveal() {
     const R = M.rooms[r];
     for (let y = R.y - 1; y <= R.y + R.h; y++) for (let x = R.x - 1; x <= R.x + R.w; x++) mark(x, y);
   }
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) mark(S.pos.x + dx, S.pos.y + dy);
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (Math.abs(dx) + Math.abs(dy) <= 3) mark(S.pos.x + dx, S.pos.y + dy); // つうろ も 2マス さき まで みえる（2026-11-15）
   if (M.mapAll) M.fog.fill(1);
 }
 const rgVisible = (x, y) => S.maze.vis[y * S.maze.TW + x] === 1;
@@ -455,6 +455,7 @@ function rgWorldTurn() {
     if (e.state === 'wander' && dh >= 0 && ((heroRoom >= 0 && M.roomOf[k] === heroRoom) || dh <= 3)) {
       e.state = e.kind === 'shima' ? 'flee' : 'chase';
       if (e.kind === 'shima' && !e.said) { e.said = true; e.say = { t: 0 }; heldDirs.length = 0; rgShimaVoice(); }
+      if (e.kind === 'normal') { e.alert = { t: 0 }; note(880, 0, 0.08, { type: 'square', vol: 0.04 }); if (RG.dash) heldDirs.length = 0; continue; } // みつけた ターン は うごかない（よける じかん）
     }
     let next = null;
     if (e.state === 'chase') {
@@ -537,9 +538,15 @@ function rgAfterBattle() {
   RG.cur = null;
   if (!e || !M) return;
   if (e === M.death) { // にげた：すこし はなれた ところ へ
-    const ang = Math.random() * Math.PI * 2;
-    e.x = S.pos.x + Math.round(Math.cos(ang) * 9); e.y = S.pos.y + Math.round(Math.sin(ang) * 9);
-    e.x = Math.max(0, Math.min(M.TW - 1, e.x)); e.y = Math.max(0, Math.min(M.TH - 1, e.y));
+    let best = null, bestD = -1; // なるべく 9マス はなれた ところ（マップ の はし でも ちかく に こない ように）
+    for (let k = 0; k < 24; k++) {
+      const ang = Math.random() * Math.PI * 2;
+      const x = Math.max(0, Math.min(M.TW - 1, S.pos.x + Math.round(Math.cos(ang) * 9))), y = Math.max(0, Math.min(M.TH - 1, S.pos.y + Math.round(Math.sin(ang) * 9)));
+      const dd = Math.abs(x - S.pos.x) + Math.abs(y - S.pos.y);
+      if (dd > bestD) { best = { x, y }; bestD = dd; }
+      if (dd >= 9) break;
+    }
+    e.x = best.x; e.y = best.y;
     e.fx = e.x; e.fy = e.y; e.t = 1;
     return;
   }
@@ -732,6 +739,7 @@ function rgDrawHero(hx, hy, T) {
   ctx.restore();
 }
 function rgDrawEnemy(e, ex, ey, T) {
+  if (!e.spr && e.kind === 'normal' && SPR.enemies.length) { const r = rgEnemySprite(e.subject); Object.assign(e, { spr: r.spr, base: r.base, tint: r.tint }); } // え が まだ よみこまれて いなかった
   const spr = e.spr, sx = ex * T + T / 2, sy = ey * T + T * 0.92;
   const hh = T * (e.kind === 'shima' ? 1.5 : 1.25) * (e.state === 'sleep' ? 0.92 : 1);
   ctx.fillStyle = 'rgba(30,10,50,.25)'; ctx.beginPath(); ctx.ellipse(sx, ey * T + T * 0.9, T * 0.3, 5, 0, 0, 7); ctx.fill();
@@ -743,7 +751,7 @@ function rgDrawEnemy(e, ex, ey, T) {
   else { ctx.fillStyle = '#b07ad8'; ctx.beginPath(); ctx.arc(0, -T * 0.4, T * 0.35, 0, 7); ctx.fill(); }
   ctx.restore();
   if (e.state === 'sleep') outlinedText('Zz', sx + T * 0.35, sy - hh - 4 - Math.sin(S.t * 2) * 3, 13, '#8a5cd1');
-  else if (e.state === 'chase' && e.kind === 'normal') outlinedText('！', sx + T * 0.3, sy - hh - 2, 18, '#ff4f6a');
+  else if (e.state === 'chase' && e.kind === 'normal') { const big = e.alert && (e.alert.t += 1 / 60) < 0.8; outlinedText('！', sx + T * 0.3, sy - hh - 2 - (big ? 6 : 0), big ? 30 : 18, '#ff4f6a'); }
   if (e.kind === 'shima' && e.say && e.say.t < 3.2) rgDrawShimaSay(sx, sy - hh - 10);
 }
 // ふきだし「今日（きょう）は もう 終（お）わったよ！！」（ルビ つき）
@@ -822,6 +830,7 @@ window.rogueTest = {
     const M = S.maze, TW = M.TW;
     const block = new Set(avoidEnemies ? M.enemies.map((e) => e.y * TW + e.x) : []);
     M.pits.forEach((p) => { if (!(p.x === target.x && p.y === target.y)) block.add(p.y * TW + p.x); });
+    M.chests.forEach((c) => { if (!c.opened && !(c.x === target.x && c.y === target.y)) block.add(c.y * TW + c.x); }); // たからばこ（なぞなぞ）も よける
     const prev = new Map(), start = S.pos.y * TW + S.pos.x, q = [start]; prev.set(start, null);
     for (let h = 0; h < q.length; h++) {
       const k = q[h];

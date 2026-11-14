@@ -1384,14 +1384,16 @@ function drawSpeech(lines, o) {
     base1 = { x: x + w - 1, y: o.cy - 10 }; base2 = { x: x + w - 1, y: o.cy + 10 };
   } else {
     x = Math.max(6, Math.min(W - w - 6, o.cx - w / 2)); y = o.bottom - h;
-    const bx = Math.max(x + 18, Math.min(x + w - 18, o.tailTo.x));
+    const bx = o.tailTo ? Math.max(x + 18, Math.min(x + w - 18, o.tailTo.x)) : x + w / 2;
     base1 = { x: bx - 10, y: y + h - 1 }; base2 = { x: bx + 10, y: y + h - 1 };
   }
   ctx.save();
   ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.fillStyle = '#ffffff';
   roundRectPath(x, y, w, h, 16); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(base1.x, base1.y); ctx.lineTo(o.tailTo.x, o.tailTo.y); ctx.lineTo(base2.x, base2.y); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(base1.x, base1.y); ctx.lineTo(o.tailTo.x, o.tailTo.y); ctx.lineTo(base2.x, base2.y); ctx.stroke();
+  if (!o.noTail) { // o.noTail：ふきだし の さき（ひと を さす ところ）を かかない
+    ctx.beginPath(); ctx.moveTo(base1.x, base1.y); ctx.lineTo(o.tailTo.x, o.tailTo.y); ctx.lineTo(base2.x, base2.y); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(base1.x, base1.y); ctx.lineTo(o.tailTo.x, o.tailTo.y); ctx.lineTo(base2.x, base2.y); ctx.stroke();
+  }
   ctx.fillStyle = o.color || INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (o.sub) {
     ctx.save(); ctx.font = `400 ${subSize}px "Dela Gothic One", "Zen Maru Gothic", sans-serif`; ctx.fillStyle = o.subColor || '#7a6890';
@@ -1750,7 +1752,7 @@ $('pad').addEventListener('click', (e) => {
   if (k === 'ok') submit(); else if (k === 'del') eraseDigit(); else typeDigit(k);
 });
 $('startBtn').addEventListener('click', startGame);
-$('nextBtn').addEventListener('click', proceed);
+$('nextBtn').addEventListener('click', () => proceed()); // ステラ で proceed を さしかえる ので なまえ で よぶ
 $('againBtn').addEventListener('click', () => setMode('title'));
 $('muteBtn').addEventListener('click', (e) => {
   soundOn = !soundOn; e.currentTarget.textContent = 'おと：' + (soundOn ? 'オン' : 'オフ'); e.currentTarget.blur();

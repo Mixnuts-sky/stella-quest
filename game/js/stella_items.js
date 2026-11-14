@@ -13,6 +13,7 @@ CONFIG.maxItems = 8;
 Object.assign(ITEMS.herb, { name: 'かいじるカレー', desc: 'HPを 1 かいふく' });
 Object.assign(ITEMS.water, { name: 'おおもり かいじるカレー', desc: 'HPを ぜんぶ かいふく' });
 Object.assign(ITEMS.scale, { desc: 'その かい の ちず と かいだん（ボス）の ばしょが ぜんぶ みえる' });
+Object.assign(ITEMS.churu, { desc: 'たたかい で つかう：にゃんこ が てき を たおす（ボス には せいかい 1かい ぶん の ダメージ）' });
 // カレーの え（おさら・ごはん・ルー・かい）
 const currySVG = (big) => `<svg viewBox="0 0 40 40">
   <ellipse cx="20" cy="27" rx="${big ? 18 : 16}" ry="${big ? 9 : 8}" fill="#ffffff" stroke="#3a2a4d" stroke-width="2.2"/>
@@ -33,6 +34,7 @@ useItem = function (i) {
   const items = ST.data ? ST.data.items : S.items, id = items[i];
   const town = S.mode === 'st', dungeon = S.mode === 'walk' && inDungeon();
   if (!id || (!town && !dungeon)) return;
+  if (id === 'churu') { showToast('チュール は たたかい の とき に「🎒 アイテム」から つかうよ', 2.6); return; }
   if (id === 'herb' || id === 'water') {
     const hp = town ? ST.data.hp : S.hp, max = stMaxHp();
     if (hp >= max) { showToast('HPは まんたん だよ'); return; }
@@ -65,7 +67,7 @@ const ITEMUI = { open: false, sel: 0 };
 })();
 
 function openItemPanel() {
-  if (ITEMUI.open || !(S.mode === 'st' || (S.mode === 'walk' && inDungeon()))) return;
+  if (ITEMUI.open || !(S.mode === 'st' || (S.mode === 'walk' && inDungeon()) || canBattleItem())) return;
   ITEMUI.open = true;
   ITEMUI.sel = Math.min(ITEMUI.sel, Math.max(0, ST.data.items.length - 1));
   if (typeof heldDirs !== 'undefined') heldDirs.length = 0; // ダンジョン：あるくのを とめる
@@ -100,6 +102,7 @@ function useFromPanel() {
   const n = ST.data.items.length;
   if (!ST.data.items[ITEMUI.sel]) return;
   const id = ST.data.items[ITEMUI.sel];
+  if (canBattleItem()) { battleUseItem(ITEMUI.sel); return; }
   // ダンジョンを でる・ワープ する アイテムは がめんを とじてから
   if (id === 'wing' || id === 'scale') { closeItemPanel(); useItem(ITEMUI.sel); return; }
   useItem(ITEMUI.sel);
@@ -107,6 +110,51 @@ function useFromPanel() {
   if (ST.data.items.length !== n) ITEMUI.sel = Math.max(0, Math.min(ITEMUI.sel, ST.data.items.length - 1));
   renderItemPanel();
 }
+
+// ---------------------------------------------------------------------
+//  たたかい の なか：1かい だけ アイテム（かいふく・チュール）
+// ---------------------------------------------------------------------
+const canBattleItem = () => !!(ST.data && ST.battle && !ST.battle.practice && S.mode === 'question' && S.monster && !S.monster.nanmon && !S.monster.itemUsed);
+function battleUseItem(i) {
+  const m = S.monster, items = ST.data.items, id = items[i];
+  if (!m || !id) return;
+  if (id === 'herb' || id === 'water') {
+    if (S.hp >= stMaxHp()) { showToast('HPは まんたん だよ'); return; }
+    items.splice(i, 1); m.itemUsed = true;
+    S.hp = id === 'herb' ? Math.min(stMaxHp(), S.hp + 1) : stMaxHp(); ST.data.hp = S.hp;
+    closeItemPanel(); healEffect(); renderHud();
+    showToast(id === 'herb' ? 'かいじるカレー を たべた！ HPが 1 かいふく！' : 'おおもり かいじるカレー を たべた！ HPが まんたん！', 2.4);
+    return;
+  }
+  if (id === 'churu') {
+    items.splice(i, 1); m.itemUsed = true;
+    closeItemPanel();
+    if (m.boss) { // ボス には せいかい 1かい ぶん の ダメージ
+      const dmg = heroAtk() + (typeof staffPlus === 'function' ? staffPlus() : 0);
+      catEnter(['まかせる', 'にゃ！']);
+      later(1.0, () => {
+        if (S.monster !== m) return;
+        m.hp = Math.max(1, m.hp - dmg); m.hitFlash = 1; S.shake = 0.6; SFX.meow(); if (SFX.boom) SFX.boom();
+        for (let k = 0; k < 20; k++) spawn('star', m.x, GROUND() - m.height * 0.5, { vx: rnd(-300, 300), vy: rnd(-380, 40), color: '#ffb3e0' });
+        catSay(['にゃんこ', `パンチ！ −${dmg}`]); renderHud();
+      });
+      later(2.4, () => catLeave());
+      return;
+    }
+    setMode('answered'); // ふつう の てき は にゃんこ が たおす
+    $('quiz').hidden = true;
+    churuAttack();
+    return;
+  }
+  showToast(`「${ITEMS[id].name}」は たたかい では つかえないよ`, 2.2);
+}
+(function battleItemButton() {
+  const b = document.createElement('button');
+  b.id = 'battleItemBtn'; b.type = 'button'; b.className = 'st-item-btn battle-item'; b.hidden = true; b.textContent = '🎒 アイテム（1かい）';
+  $('game').appendChild(b);
+  b.addEventListener('click', () => { openItemPanel(); b.blur(); });
+  setInterval(() => { b.hidden = !canBattleItem() || ITEMUI.open; }, 150);
+})();
 
 // キー：I で ひらく、ひらいている あいだ は ←→↑↓ で えらぶ・Enter で つかう・Esc で とじる
 addEventListener('keydown', (e) => {
@@ -122,6 +170,7 @@ addEventListener('keydown', (e) => {
     e.preventDefault(); e.stopImmediatePropagation();
     return;
   }
+  if (e.code === 'KeyI' && !e.repeat && canBattleItem()) { openItemPanel(); e.preventDefault(); e.stopImmediatePropagation(); return; }
   const walkable = S.mode === 'st' && (ST.scene === 'town' || ST.scene === 'interior') || (S.mode === 'walk' && inDungeon());
   if (!walkable || e.repeat) return;
   if (e.code === 'KeyI') { openItemPanel(); e.preventDefault(); e.stopImmediatePropagation(); return; }

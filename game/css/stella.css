@@ -348,3 +348,16 @@ body.touch .st-talk small { display: none; }
 .zk-chars { display: flex; flex-wrap: wrap; gap: 6px; }
 .zk-chars span { width: 40px; height: 40px; display: grid; place-items: center; font-size: 24px; font-weight: 900; border: 2px dashed #d9cfe3; border-radius: 10px; color: #d9cfe3; background: #fff; }
 .zk-chars span.on { color: var(--ink); border: 3px solid #ffb02e; background: #fff7d6; }
+
+/* こまかい ちょうせい（stella_ui.js） */
+html, body.stella { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+.staff-ud { display: flex; gap: 6px; }
+.staff-ud button { font-size: 20px; padding: 6px 16px !important; min-width: 56px; }
+
+.act-dodge.warn { background: rgba(255,200,60,.16); }
+.act-dodge.warn .act-arrow { animation: nudge .25s ease-in-out infinite; }
+.act-pop.crit { -webkit-text-stroke: 3px #fff; text-shadow: 0 0 18px rgba(255,220,90,.95), 0 4px 0 rgba(58,42,77,.5); }
+.act-pop.big { font-size: clamp(40px, 7vw, 76px); top: 24%; animation: critin .5s cubic-bezier(.2,1.8,.4,1) both; }
+@keyframes critin { from { transform: translateX(-50%) scale(2.6) rotate(-8deg); opacity: 0; } 60% { transform: translateX(-50%) scale(.9) rotate(3deg); opacity: 1; } }
+
+.st-item-btn.battle-item { right: auto; left: 16px; bottom: 16px; z-index: 7; }
