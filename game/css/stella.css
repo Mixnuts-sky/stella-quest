@@ -317,3 +317,34 @@ body.touch .st-talk small { display: none; }
   .eng-pad .pad-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .eng-pad .pad-btns button { padding: 6px 8px; font-size: 14px; }
 }
+
+/* むげん の とう（stella_endless.js） */
+.endless-row { display: flex; gap: 10px; align-items: stretch; margin-top: 6px; }
+.endless-row .dg.endless { flex: 1; background: linear-gradient(135deg, #2a1d5a, #4a2a8a) !important; color: #fff3b8 !important; }
+.endless-row .dg.endless .dn { background: #ffd84a; color: var(--ink); }
+.endless-row .dg.endless.locked { filter: grayscale(.8) brightness(.8); }
+
+/* そだてる・きろく（stella_growth.js・stella_records.js） */
+.grow-row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; font-weight: 900; font-size: 15px; background: #f6f0ff; border-radius: 14px; padding: 6px 12px; }
+.wplus { color: #e2588f; }
+.wmax { color: #c98a00; }
+.shard-get { display: block; color: #c98a00; font-weight: 900; }
+.cat-box { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.cat-face { font-size: 34px; letter-spacing: 6px; }
+.cat-lv { font-family: var(--display); font-size: 22px; color: #e2588f; }
+.weak-go { background: #ffe8f1 !important; border-color: #e2588f !important; }
+.weak-tag { display: inline-block; font-size: 12px; color: #fff; background: #e2588f; border-radius: 999px; padding: 0 8px; }
+.st-zukan-btn { pointer-events: auto; margin-left: auto; }
+.st-zukan-btn + .st-title-btn { margin-left: 0; }
+.zk-body { max-height: 52vh; overflow-y: auto; }
+.zk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.zk-card { border: 3px solid var(--ink); border-radius: 14px; background: #fff; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.zk-card img { width: 80px; height: 80px; object-fit: contain; }
+.zk-card b { font-size: 12px; line-height: 1.2; }
+.zk-card small { font-size: 11px; color: #9a8aac; }
+.zk-card.none { background: #f2edf6; border-style: dashed; }
+.zk-q { width: 80px; height: 80px; display: grid; place-items: center; font-family: var(--display); font-size: 40px; color: #c9b8dc; }
+.zk-lv { font-weight: 900; color: #8a5cd1; margin: 8px 0 4px; }
+.zk-chars { display: flex; flex-wrap: wrap; gap: 6px; }
+.zk-chars span { width: 40px; height: 40px; display: grid; place-items: center; font-size: 24px; font-weight: 900; border: 2px dashed #d9cfe3; border-radius: 10px; color: #d9cfe3; background: #fff; }
+.zk-chars span.on { color: var(--ink); border: 3px solid #ffb02e; background: #fff7d6; }

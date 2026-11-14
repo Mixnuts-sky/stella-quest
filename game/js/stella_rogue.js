@@ -36,6 +36,8 @@ const rgPick = (table) => { let r = Math.random() * table.reduce((s, x) => s + x
 const RG_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const RG_DIRNAME = { '1,0': 'right', '-1,0': 'left', '0,1': 'down', '0,-1': 'up' };
 const rgActive = () => !!(S.maze && S.maze.rogue && ST.data && ST.data.dungeon);
+// いちばん した の かい（ボス の おしろ）か。むげん の ダンジョン（stella_endless.js）で さしかえる
+let rgIsLastFloor = (diff, floor) => floor >= diff;
 const RG = { cur: null, holdT: 0, holdDir: null, dash: false, lock: 0, dark: 0, omen: null };
 
 // ---------------------------------------------------------------------
@@ -116,7 +118,7 @@ function rgGenerate(diff, floor) {
     .filter((o) => o.d > 0).sort((p, q) => q.d - p.d);
   const goalRoom = pick(far.slice(0, Math.max(1, Math.ceil(far.length / 3)))).r;
   const goal = pick(inner(goalRoom).filter((p) => !rgIsDoorway(grid, roomOf, TW, p.x, p.y)).concat([]).filter(Boolean)) || pick(inner(goalRoom));
-  const last = floor >= diff;
+  const last = rgIsLastFloor(diff, floor);
   const used = new Set([at(start.x, start.y), at(goal.x, goal.y)]);
   const freeSpot = (roomsPool) => {
     for (let k = 0; k < 60; k++) {
@@ -269,7 +271,7 @@ function rgSnapshot(floorStart) {
       TW: M.TW, TH: M.TH, grid: Array.from(M.grid), roomOf: Array.from(M.roomOf), rooms: M.rooms, start: { ...S.pos }, goal: M.goal, last: M.last,
       floor: M.floor, items: M.items.map((o) => ({ ...o })), chests: M.chests.map((o) => ({ ...o })), pits: M.pits.map((o) => ({ ...o })), house: M.house,
       enemies: M.enemies.map((e) => ({ x: e.x, y: e.y, kind: e.kind, state: e.state, subject: e.subject, base: e.base, tint: e.tint, bonus: e.bonus, dir: e.dir, facing: e.facing })),
-      shima: M.shima,
+      shima: M.shima, rest: M.rest || null,
     };
   }
   d.dungeon.v = 2;
@@ -285,7 +287,7 @@ function rgResume(snap) {
     rogue: true, TW: f.TW, TH: f.TH, grid: Uint8Array.from(f.grid), roomOf: Int16Array.from(f.roomOf), rooms: f.rooms, start: f.start, goal: f.goal, last: f.last,
     floor: f.floor, items: f.items.map((o) => ({ ...o })), chests: f.chests.map((o) => ({ ...o })), pits: f.pits.map((o) => ({ ...o })), house: f.house, houseWoken: false,
     fog: new Uint8Array(f.TW * f.TH), vis: new Uint8Array(f.TW * f.TH), visited: new Uint8Array(f.TW * f.TH),
-    enemies: f.enemies.map(rgRestoreEnemy), death: null, shima: f.shima, steps: 0, spawnT: 0, heroScreen: null, mapAll: false,
+    enemies: f.enemies.map(rgRestoreEnemy), death: null, shima: f.shima, rest: f.rest || null, steps: 0, spawnT: 0, heroScreen: null, mapAll: false,
   };
   S.maze = M;
   RG.gauge = snap.gauge || 0;
@@ -690,6 +692,7 @@ drawMaze = function () {
     const ek = ease(e.t), ex = e.fx + (e.x - e.fx) * ek, ey = e.fy + (e.y - e.fy) * ek;
     objs.push({ y: ey, draw: () => rgDrawEnemy(e, ex, ey, T) });
   });
+  if (M.rest && typeof rgRestObjs === 'function') rgRestObjs(objs, T); // やすみ の かい（stella_endless.js）
   objs.push({ y: hy, draw: () => rgDrawHero(hx, hy, T) });
   if (M.death) {
     const D = M.death, dk = ease(D.t), dx = D.fx + (D.x - D.fx) * dk, dy = D.fy + (D.y - D.fy) * dk;
