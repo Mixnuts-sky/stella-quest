@@ -35,7 +35,7 @@ const INTERIORS = {
     exit: { x: 178, y: 340, w: 64, h: 10 },
     spots: [
       { id: 'counter', x: 210, y: 208, r: 34, label: 'てんいん', act: () => openWeaponShop() },
-      { id: 'display', x: 160, y: 308, r: 28, label: 'てんじ', act: () => stDialog(['かっこいい ぶきが ならんでいる……！', 'かうときは てんいんさんに はなしかけてね。']) },
+      { id: 'display', x: 160, y: 308, r: 28, label: 'てんじ', act: () => stDialog(['かっこいい ぶきが ならんでいる……！', 'かうときは しまじろうに はなしかけてね。']) },
       { id: 'armor', x: 95, y: 170, r: 30, label: 'よろい', act: () => stDialog(['ピカピカの よろいだ。', ['ちゅなちゃん', 'ちょっと おもそう……'], ['にゃんこ', 'にゃ（まほうつかい には つえ が いちばん）']]) },
     ],
   },
@@ -86,15 +86,16 @@ const INTERIORS = {
   },
   item: {
     img: 'itemIn', name: 'アイテムや', heroH: 125, start: { x: 600, y: 630 }, back: { x: 24, y: 16 },
+    npcs: [{ spr: 'しまじろう', x: 591, y: 292, h: 168, clipY: 206 }], // てんいん は しまじろう（カウンターの うしろ）
     walk: [[[230, 285], [960, 285], [960, 540], [700, 540], [700, 668], [500, 668], [500, 540], [230, 540]],
       [[300, 200], [430, 200], [430, 290], [300, 290]], [[755, 200], [940, 200], [940, 290], [755, 290]]],
     block: [[425, 198, 336, 88], [385, 335, 190, 168], [635, 335, 192, 168]],
     exit: { x: 500, y: 652, w: 200, h: 16 },
     spots: [
-      { id: 'counter', x: 592, y: 300, r: 80, label: 'てんいん', act: () => openItemShop() },
-      { id: 'potion', x: 480, y: 525, r: 60, label: 'くすり', act: () => stDialog(['いろとりどりの くすり が ならんでいる。', 'かうときは てんいんさんに はなしかけてね。']) },
+      { id: 'counter', x: 592, y: 300, r: 80, label: 'しまじろう', act: () => openItemShop() },
+      { id: 'potion', x: 480, y: 525, r: 60, label: 'くすり', act: () => stDialog(['いろとりどりの くすり が ならんでいる。', 'かうときは しまじろうに はなしかけてね。']) },
       { id: 'goods', x: 730, y: 525, r: 60, label: 'しなもの', act: () => stDialog(['はね・りんご・すいしょう……ふしぎな しなもの が いっぱい！']) },
-      { id: 'door', x: 860, y: 260, r: 60, label: 'とびら', act: () => stDialog(['おくの くら に つづく とびら。', ['てんいんさん', 'そこは くら だから はいっちゃ だめよ〜']]) },
+      { id: 'door', x: 860, y: 260, r: 60, label: 'とびら', act: () => stDialog(['おくの くら に つづく とびら。', ['しまじろう', 'そこは くら だから はいっちゃ だめ！']]) },
     ],
   },
   gate: {
@@ -251,7 +252,7 @@ function drawInterior() {
   ctx.save(); ctx.translate(v.ox, v.oy); ctx.scale(v.s, v.s);
   if (bimgReady(im)) ctx.drawImage(im, 0, 0, v.iw, v.ih);
   // ひと と ちゅなちゃん を うえから じゅんに
-  const objs = (c.npcs || []).map((n) => ({ y: n.y, draw: () => { ctx.save(); ctx.translate(n.x, n.y); drawNpcSprite(n.spr, n.h, n.flip); ctx.restore(); } }));
+  const objs = (c.npcs || []).map((n) => ({ y: n.y, draw: () => { ctx.save(); if (n.clipY) { ctx.beginPath(); ctx.rect(n.x - n.h, n.y - n.h * 2, n.h * 2, n.clipY - (n.y - n.h * 2)); ctx.clip(); } ctx.translate(n.x, n.y); drawNpcSprite(n.spr, n.h, n.flip); ctx.restore(); } }));
   if (INT.id === 'house' && INT.cat) objs.push({ y: INT.cat.y, draw: () => drawIntCat(INT.cat.x, INT.cat.y, c.heroH * 0.55) });
   if (INT.sleeping) objs.push({ y: 0, draw: () => drawSleeping() });
   else objs.push({ y: INT.y, draw: () => drawIntHero(c, k, v) });

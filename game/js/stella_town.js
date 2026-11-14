@@ -49,7 +49,7 @@ addEventListener('DOMContentLoaded', () => {
 });
 // え の ある ひと を かく（あしもと が (0,0)）。なければ false
 function drawNpcSprite(name, hh, flip) {
-  const spr = NPC_SPR[name];
+  const spr = NPC_SPR[name] || (SPR.rares || []).find((r) => r.name === name); // しまじろう（レアてき の え）
   if (!spr) return false;
   const w = hh * spr.w / spr.h;
   ctx.save();

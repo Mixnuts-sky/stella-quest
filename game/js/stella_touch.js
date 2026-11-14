@@ -1,10 +1,11 @@
 // =====================================================================
-//  ステラクエスト：タッチ そうさ（iPhone・iPad など キーボードの ない きかい）
-//  まち・たてものの なか で 十字ボタン と「しらべる」ボタン を だす。
+//  ステラクエスト：そうさ ボタン（パソコン も iPhone・iPad も おなじ ならび）
+//  ・ひだりした：十字ボタン（#stPad）
+//  ・みぎした：おおきい ボタン（#stOk）。まち・たてもの では「しらべる」、ダンジョン では「ひっさつ」
+//  ・その うえ：ちいさい「アイテム」ボタン（#stItemBtn）→ アイテム がめん（stella_items.js）
 //  ボタンは キーボードの キー（やじるし・Enter）の イベントを つくって ながすだけ なので、
-//  あるく しくみ（stella_town.js / stella_interior.js）は そのまま つかえる。
-//  ダンジョンの めいろ は maze.js の 十字ボタン（#dpad）を つかう。
-//  stella_town.js・stella_interior.js の あとに よむ。
+//  あるく しくみ（stella_town.js / stella_interior.js / maze.js）は キーボードと おなじ。
+//  しよう：docs/GAME_SPEC.md 9.9・14.1
 // =====================================================================
 const IS_TOUCH = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
 if (IS_TOUCH) document.body.classList.add('touch');
@@ -19,7 +20,13 @@ function touchKey(type, name) {
   dispatchEvent(new KeyboardEvent(type, { key: k.key, code: k.code, bubbles: true, cancelable: true }));
 }
 
-(function buildTouchPad() {
+// いま あるける ばめん か（まち・たてもの・ダンジョン）
+const ctlWalkScene = () => typeof ST !== 'undefined' && ST.data && (
+  (S.mode === 'st' && (ST.scene === 'town' || ST.scene === 'interior')) ||
+  (S.mode === 'walk' && typeof inDungeon === 'function' && inDungeon() && !S.monster));
+const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'function' && inDungeon();
+
+(function buildControls() {
   const game = $('game');
   const pad = document.createElement('div');
   pad.id = 'stPad'; pad.className = 'dpad st-pad'; pad.hidden = true;
@@ -29,8 +36,11 @@ function touchKey(type, name) {
     <button type="button" data-k="down" class="down" aria-label="した">▼</button>`;
   const ok = document.createElement('button');
   ok.id = 'stOk'; ok.type = 'button'; ok.className = 'st-ok'; ok.hidden = true;
-  ok.dataset.k = 'ok'; ok.textContent = 'しらべる';
-  game.appendChild(pad); game.appendChild(ok);
+  ok.dataset.k = 'ok'; ok.innerHTML = '<span class="lbl">しらべる</span><span class="gauge"><i></i></span>';
+  const itemBtn = document.createElement('button');
+  itemBtn.id = 'stItemBtn'; itemBtn.type = 'button'; itemBtn.className = 'st-item-btn'; itemBtn.hidden = true;
+  itemBtn.innerHTML = '🎒 アイテム';
+  game.appendChild(pad); game.appendChild(ok); game.appendChild(itemBtn);
 
   [...pad.querySelectorAll('button'), ok].forEach((b) => {
     let down = false;
@@ -44,12 +54,26 @@ function touchKey(type, name) {
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, up));
     b.addEventListener('contextmenu', (e) => e.preventDefault()); // ながおし の メニューを ださない
   });
+  itemBtn.addEventListener('click', () => { if (typeof audio === 'function') audio(); if (typeof openItemPanel === 'function') openItemPanel(); itemBtn.blur(); });
 
   // あるける ばめん の とき だけ だす
-  let last = null;
+  let last = '';
   const sync = () => {
-    const show = IS_TOUCH && typeof ST !== 'undefined' && ST.data && S.mode === 'st' && (ST.scene === 'town' || ST.scene === 'interior');
-    if (show !== last) { pad.hidden = ok.hidden = !show; last = show; }
+    const panelOpen = (typeof ITEMUI !== 'undefined' && ITEMUI.open) || (typeof RG !== 'undefined' && RG.special);
+    const show = ctlWalkScene() && !panelOpen;
+    const dg = ctlInDungeonWalk();
+    const key = `${show}|${dg}`;
+    if (key !== last) {
+      pad.hidden = ok.hidden = itemBtn.hidden = !show;
+      ok.classList.toggle('special', dg);
+      ok.querySelector('.lbl').textContent = dg ? 'ひっさつ' : 'しらべる';
+      last = key;
+    }
+    if (dg && typeof specialGauge === 'function') {
+      const g = specialGauge();
+      ok.querySelector('.gauge i').style.width = `${Math.round(g * 100)}%`;
+      ok.classList.toggle('full', g >= 1);
+    }
     requestAnimationFrame(sync);
   };
   requestAnimationFrame(sync);

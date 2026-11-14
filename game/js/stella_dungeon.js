@@ -16,12 +16,13 @@ const DUNGEONS = {
   4: 'ゆうやけ こうげん', 5: 'ほしぞらの やま', 6: 'ドラゴンの おしろ',
 };
 Object.entries(DUNGEONS).forEach(([d, name]) => { THEMES[d].place = name; });
-const ARCA_REWARD = { 1: [10, 50], 2: [15, 75], 3: [25, 120], 4: [40, 180], 5: [60, 300], 6: [100, 500] }; // [ざこ, ボス]
+const ARCA_REWARD = { 1: [7, 50], 2: [10, 75], 3: [18, 120], 4: [28, 180], 5: [42, 300], 6: [70, 500] }; // [ざこ, ボス]（2026-11-14 アクション版：ざこ は 7わり）
 const SUBJECT_WEIGHTS = [['math', 50], ['kanji', 30], ['music', 20]];
 const BATTLES_TO_BOSS = 8; // めいろの おおきさに かかわらず、ボスまでの たたかいが だいたい これくらい
 
 CONFIG.pitOnPath = true; // ボスまでの みちは かならず おとしあなの へや を とおる（maze.js）
-const bossHpOf = (d) => d * (d >= 6 ? 6 : 3);
+const bossHpOf = (d) => (d >= 6 ? 60 : d * 6); // アクション版：たたかい の かず が ふえる ので HP を あげる
+const mobHpOf = (d) => d * 2;
 const isWeo = (spr) => !!spr && spr.name === 'うぇーおー';
 const inDungeon = () => !!(ST.data && ST.data.dungeon);
 
@@ -157,7 +158,7 @@ encounter = function (opts = {}) {
         name: pw.prefix + (tint ? tint.name + ' ' : '') + spr.name });
     }
   }
-  m.hp = m.maxHp = diff;
+  m.hp = m.maxHp = mobHpOf(diff);
 };
 
 const baseSpawnBossDungeon = spawnBoss;

@@ -14,7 +14,7 @@
 Object.assign(CONFIG, { heroX: 0.2, enemyX: 0.5 }); // かんじの かきとり パッドが みぎに でるので てきは まんなか
 const SUBJ_ORDER = ['math', 'kanji', 'music'];
 const SUBJ_LABEL = { math: 'さんすう', kanji: 'かんじ', music: 'おんがく' };
-const KANJI_TAG = { 1: 'ふくしゅう', 2: 'ふくしゅう・ぶん', 3: 'いま おぼえている', 4: 'いま おぼえている・ぶん', 5: 'よしゅう', 6: 'よしゅう・ぶん' };
+const KANJI_TAG = { 1: 'かんじ 1', 2: 'かんじ 2', 3: 'かんじ 3', 4: 'かんじ 4', 5: 'かんじ 5・なぞり', 6: 'かんじ 6・なぞり' }; // 2026-11-14：リスト の なんいど と おなじ
 
 // にがて かんじは セーブデータに きろく
 KANJI_HOOKS.loadWeak = () => (ST.data && ST.data.weak) || {};
@@ -58,22 +58,24 @@ function enemyLabel(m, tag) {
   return `${who}（${tag}）`;
 }
 
-// かんじ：なんいど 1〜6（2・4・6 は みじかい ぶんの あなうめ）
+// かんじ：なんいど 1〜6 は 漢字リスト の おなじ なんいど（ことば か みじかい ぶん の あなうめ を はんぶん ずつ）
+//   てだすけ：1〜4 は おてほん なし、5・6 は なぞり がき（GAME_SPEC.md 14.11）
+const KANJI_SENTENCE_RATE = 0.5;
 function askKanjiStella(m, lv) {
-  const listLv = Math.ceil(lv / 2), sentence = lv % 2 === 0;
+  const listLv = lv;
   let pool = KLIST.filter((e) => e.level === listLv);
   if (!pool.length) pool = KLIST;
-  if (sentence) { const withS = pool.filter((e) => e.sentence); if (withS.length) pool = withS; }
-  const q = buildQuestion(pickEntry(pool), false, sentence);
+  const entry = pickEntry(pool), sentence = !!entry.sentence && Math.random() < KANJI_SENTENCE_RATE;
+  const q = buildQuestion(entry, false, sentence);
   S.q = q; S.input = '';
   $('monName').innerHTML = enemyLabel(m, KANJI_TAG[lv]) + subjTag('kanji');
   $('quiz').classList.toggle('boss', !!m.boss);
   $('qmsg').textContent = ''; $('qmsg').className = 'qmsg';
   $('nextBtn').hidden = true;
-  const guide = listLv >= 3 || S.hintNext ? 'trace' : 'none';
+  const guide = listLv >= 5 || S.hintNext ? 'trace' : 'none';
   S.hintNext = false;
   setMode('question');
-  kanjiSetup(q, { guide, hint: listLv === 2 });
+  kanjiSetup(q, { guide, hint: false });
 }
 
 // おんがく：なんいど 1〜6、レアてきは 7（おとだけ）

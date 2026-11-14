@@ -112,7 +112,7 @@ function startNecroBattle(kind, returnTo) {
 // ダンジョンで 1%：きゅうに くらく なって「……みつけた……」→ かねの おと → あらわれた！
 const baseEncounterNecro = encounter;
 encounter = function (opts = {}) {
-  if (inDungeon() && !ST.battle && !opts.boss && !opts.rare && (NECRO.force || Math.random() < NECRO.chance)) {
+  if (inDungeon() && !ST.battle && !opts.boss && !opts.rare && !opts.sym && (NECRO.force || (!S.maze || !S.maze.rogue) && Math.random() < NECRO.chance)) { // ふしぎな ダンジョン では 死神 は マップ に でる（stella_rogue.js）
     NECRO.force = false;
     necroAppear();
     return;

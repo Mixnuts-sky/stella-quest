@@ -116,8 +116,8 @@ function openItemShop(msg = '') {
       <button type="button" class="buy" data-buy="${id}">${arcaTag(price)} かう</button></div>`;
   }).join('');
   const p = stPanel(`
-    <div class="shop-head"><span class="shop-title">🧪 アイテムや</span><span class="shop-arca">もっている ${arcaTag(d.arca)}</span></div>
-    <div class="shop-talk">「いらっしゃいませ♪ もちものは ${CONFIG.maxItems}こ まで もてるわよ（いま ${d.items.length}こ）」</div>
+    <div class="shop-head"><span class="shop-title">🍛 アイテムや</span><span class="shop-arca">もっている ${arcaTag(d.arca)}</span></div>
+    <div class="shop-talk">しまじろう「いらっしゃい！ かいじるカレー あるよ！ もちものは ${CONFIG.maxItems}こ まで（いま ${d.items.length}こ）」</div>
     <div class="ilist">${rows}</div>
     <div class="shop-msg">${msg}</div>
     <div class="shop-foot"><button type="button" class="close">おみせを でる（Esc）</button></div>`);
@@ -127,7 +127,7 @@ function openItemShop(msg = '') {
 
 function buyItem(id) {
   const d = ST.data, price = SHOP_ITEMS.find((s) => s.id === id).price;
-  if (d.items.length >= CONFIG.maxItems) { SFX.bad(); shopMsg('もちものが いっぱいだよ（5こ まで）', true); return; }
+  if (d.items.length >= CONFIG.maxItems) { SFX.bad(); shopMsg(`もちものが いっぱいだよ（${CONFIG.maxItems}こ まで）`, true); return; }
   if (d.arca < price) { SFX.bad(); shopMsg(`アルカが たりないよ。あと ${price - d.arca} アルカ！`, true); return; }
   d.arca -= price;
   d.items.push(id);

@@ -40,7 +40,7 @@ encounter = function (opts = {}) {
   }
   // ボーナスてき（ダンジョン の ふつうの てき だけ。ほいくえん は うぇーおー だけ なので でない）
   if (!m.rare && inDungeon() && ST.battle && ST.battle.returnTo === 'dungeon' && BONUS_SPR.length
-      && !(typeof isHoikuen === 'function' && isHoikuen()) && (opts.bonus || Math.random() < BONUS.rate)) {
+      && !(typeof isHoikuen === 'function' && isHoikuen()) && (opts.sym ? opts.bonus : (opts.bonus || Math.random() < BONUS.rate))) { // マップ の てき は はじめ から きまっている
     const spr = pick(BONUS_SPR), pw = ENEMY_POWER[S.level] || ENEMY_POWER[1];
     Object.assign(m, { spr, bonus: true, tintColor: null, name: spr.name, height: (spr.height || 190) * pw.scale,
       power: { ...pw, aura: 'rgba(255,215,90,.95)', filter: null, anger: false, horns: false, crown: false },
@@ -78,6 +78,16 @@ function stepBigRare(m, dt) {
     m.dooon = { t: 0 };
   }
   if (m.dooon) { m.dooon.t += dt; if (m.dooon.t > 1.2) m.dooon = null; }
+  // 「バーーーッ」：たたかい の はじめ と、こうげき して くる とき に 手 を パタパタ
+  if (m.thudDone && !m.baaStart) { m.baaStart = true; m.baa = { t: -1.0 }; } // どんっ！ の あと
+  if (m.state === 'attack' && !m.baaAtk) { m.baaAtk = true; m.baa = { t: 0 }; }
+  if (m.state !== 'attack') m.baaAtk = false;
+  if (m.baa) {
+    const before = m.baa.t;
+    m.baa.t += dt;
+    if (before < 0 && m.baa.t >= 0) baaVoice();
+    if (m.baa.t > BAA_SEC) m.baa = null;
+  }
   if (m.state === 'hit' && !m.fade) {
     m.fade = { t: 0 }; m.alpha = 0.999;
     document.body.classList.add('miracle'); // きえる ところ を もんだい の パネル で かくさない
@@ -115,14 +125,71 @@ drawMonster = function () {
     outlinedText('ゴゴゴゴゴゴゴ…', m.x + shake, GROUND() - m.height * 0.55, 44, '#8a6a4a');
     return;
   }
+  const baa = m.baa && m.baa.t >= 0 && m.state !== 'hit' ? m.baa : null;
+  if (baa) drawBaaHands(m, baa.t, true);
+  const x0 = m.x;
+  if (baa) m.x += Math.sin(S.t * 70) * 7; // ぶるぶる
   baseDrawMonsterRare();
+  m.x = x0;
+  if (baa) drawBaaHands(m, baa.t, false);
   if (m.dooon) outlinedText('どんっ！', m.x - m.height * 0.62, GROUND() - m.height * 0.4, 60 + m.dooon.t * 10, '#e2588f');
+  if (baa) drawBaaText(m, baa.t);
 };
+
+// ---------------------------------------------------------------------
+//  しまじろう の「バーーーッ」（て を たくさん だして パタパタ）
+// ---------------------------------------------------------------------
+const BAA_SEC = 2.2;
+const BAA_HANDS = [ // からだ の まわり（ちゅうしん から の むき・きょり・おおきさ・うしろ か）
+  [-2.5, 0.62, 1.0, true], [-2.0, 0.7, 0.9, false], [-1.4, 0.66, 1.05, true], [-0.9, 0.62, 0.85, false],
+  [-0.45, 0.7, 1.0, true], [0.0, 0.68, 0.9, false], [0.45, 0.66, 1.0, true], [0.95, 0.6, 0.85, false],
+  [-2.85, 0.5, 0.8, false], [-0.2, 0.52, 0.8, true], [-1.75, 0.5, 0.8, false], [0.7, 0.5, 0.75, true],
+];
+function drawBaaHands(m, t, back) {
+  const cx = m.x, cy = GROUND() - m.height * 0.55, R = m.height * 0.62;
+  const grow = Math.min(1, t / 0.18) * (t > BAA_SEC - 0.3 ? Math.max(0, (BAA_SEC - t) / 0.3) : 1);
+  BAA_HANDS.forEach(([a, d, sz, isBack], i) => {
+    if (isBack !== back) return;
+    const flap = Math.sin(S.t * 38 + i * 1.7) * 0.55;
+    const ang = a - Math.PI / 2 + Math.PI / 2 + flap * 0.25;
+    const x = cx + Math.cos(ang) * R * d * (0.9 + 0.1 * Math.sin(S.t * 30 + i)), y = cy + Math.sin(ang) * R * d * 0.95;
+    drawBaaHand(x, y, ang + Math.PI / 2 + flap, m.height * 0.2 * sz * grow);
+  });
+}
+function drawBaaHand(x, y, rot, s) {
+  if (s <= 1) return;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+  ctx.fillStyle = '#fbe7c2'; ctx.strokeStyle = INK; ctx.lineWidth = Math.max(2, s * 0.07); ctx.lineJoin = 'round';
+  // うで
+  ctx.beginPath(); ctx.moveTo(-s * 0.18, s * 0.25); ctx.lineTo(-s * 0.14, s * 0.9); ctx.lineTo(s * 0.14, s * 0.9); ctx.lineTo(s * 0.18, s * 0.25); ctx.fill(); ctx.stroke();
+  // ゆび（4ほん ＋ おやゆび）
+  for (let k = 0; k < 4; k++) {
+    const fx = (k - 1.5) * s * 0.16;
+    ctx.beginPath(); ctx.ellipse(fx, -s * 0.28, s * 0.075, s * 0.2, (k - 1.5) * 0.12, 0, 7); ctx.fill(); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.ellipse(s * 0.3, s * 0.02, s * 0.07, s * 0.17, 0.9, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, 0, s * 0.3, s * 0.27, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function drawBaaText(m, t) {
+  const k = Math.min(1, t / 0.15), wob = (Math.random() - 0.5) * 6;
+  ctx.save();
+  ctx.globalAlpha = t > BAA_SEC - 0.3 ? Math.max(0, (BAA_SEC - t) / 0.3) : 1;
+  const x = m.x - m.height * 0.78 + wob, y = GROUND() - m.height * 0.95;
+  ctx.font = `900 ${Math.round(58 * k)}px "Dela Gothic One", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 9; ctx.strokeStyle = '#ffffff'; ctx.fillStyle = INK; ctx.lineJoin = 'round';
+  'バーーーッ'.split('').forEach((ch, i) => { // たて がき
+    const yy = y + i * 54 * k, rot = ch === 'ー' ? Math.PI / 2 : 0;
+    ctx.save(); ctx.translate(x, yy); ctx.rotate(rot); ctx.strokeText(ch, 0, 0); ctx.fillText(ch, 0, 0); ctx.restore();
+  });
+  ctx.restore();
+}
+function baaVoice() { noise(0, 1.2, 0.07, 900); note(160, 0, 0.9, { type: 'sawtooth', vol: 0.05, vib: 14 }); }
 // 「どんっ」の あと すこし まって から もんだい（すぐ だと もんだい の パネル で かくれる）
 const baseStartBattleTurnRare = startBattleTurn;
 startBattleTurn = function () {
   const m = S.monster;
-  if (m && m.big && !m.waited) { m.waited = true; later(1.3, () => { if (S.monster === m) baseStartBattleTurnRare(); }); return; }
+  if (m && m.big && !m.waited) { m.waited = true; later(2.9, () => { if (S.monster === m) baseStartBattleTurnRare(); }); return; } // どんっ → バーーーッ の あと
   baseStartBattleTurnRare();
 };
 // きえおわる まで まって から たたかい を おえる
