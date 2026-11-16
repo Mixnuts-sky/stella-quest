@@ -391,6 +391,8 @@ html, body.stella { touch-action: manipulation; -webkit-text-size-adjust: 100%; 
 
 /* ためる こうげき・よける（stella_action.js、2026-11-14） */
 .act-bar.charge .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #ffd84a, #ff8a3c); }
+.act-bar.charge .crit { position: absolute; top: 0; bottom: 0; background: rgba(255,111,168,.28); border-left: 3px dashed #e2588f; border-right: 3px dashed #e2588f; }
+.act-timing.full .act-bar .crit { background: rgba(255,255,255,.45); }
 .act-timing.full .act-bar { box-shadow: 0 0 0 5px #fff3a0, 0 0 34px 12px #ffd84a; animation: nudge .3s ease-in-out infinite; }
 .act-timing.full .act-bar .fill { background: linear-gradient(90deg, #fff3a0, #ffd84a, #ff6fa8); }
 .act-dodge { align-items: flex-start; padding-top: 9vh; background: rgba(255,60,90,.06); }

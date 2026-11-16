@@ -13,8 +13,8 @@
 
 const ACT = {
   timingSec: Infinity,   // タイミング こうげき を まつ じかん（2026-11-15：おす まで きえない。テスト だけ みじかく）
-  chargeSec: 0.9,        // ながおし で まんたん に なる まで（びょう）
-  glowSec: 1.1,          // まんたん で ひかって いる じかん（この あいだ に はなすと クリティカル）
+  chargeSec: 1.7,        // ながおし で バー が いっぱい に なる まで（びょう）。いっぱい まで いく と ためすぎ（ふつう）
+  critZone: [0.78, 0.93], // バー の この あいだ（8〜9わり）で はなすと クリティカル（2026-11-17）
   dodgeTravel: { mob: 2.4, boss: 2.0 }, // たま が とんで くる じかん（びょう）
   dodgeWin: [0.55, 0.93],               // ひかる わ（とぶ みちのり の この あいだ で タップ）
   warnSec: 0.6,                         // たま が とぶ まえ の「こうげき が くる！」（よちょう）
@@ -40,7 +40,7 @@ const actOn = () => !!(ST.battle && !ST.battle.practice && S.monster && !S.monst
 // ---------------------------------------------------------------------
 (function buildActionUi() {
   const add = (id, cls, html = '') => { const d = document.createElement('div'); d.id = id; d.className = cls; d.hidden = true; d.innerHTML = html; $('game').appendChild(d); return d; };
-  add('actTiming', 'act-layer act-timing', '<div class="act-box"><div class="act-cap">ながおし で ためて、ひかったら はなす！</div><div class="act-bar charge"><i class="fill"></i></div></div>');
+  add('actTiming', 'act-layer act-timing', '<div class="act-box"><div class="act-cap">ながおし で ためて、ピンク の ところ で はなす！</div><div class="act-bar charge"><i class="fill"></i><i class="crit"></i></div></div>');
   add('actDodge', 'act-layer act-dodge', '<div class="act-box"><div class="act-cap">こうげき が くる！</div><div class="act-arrow">❗</div></div>');
   add('actMash', 'act-layer act-mash', '<div class="act-box"><div class="act-cap">おおわざ が くる！ れんだ で バリア！</div><div class="act-count">0</div><div class="act-meter"><i></i></div></div>');
   add('actAim', 'act-layer act-aim', '<div class="act-box top"><div class="act-cap">ひっぱって はなして とどめ！</div><small>ちゅなちゃん から うしろ へ ひっぱる → はなす と とんでいく</small></div><canvas id="actAimCv"></canvas>');
@@ -102,22 +102,26 @@ cast = function (kind, onHit) {
   ACT.timing = { t0: performance.now(), hold: null, done: false, go: () => baseCastAct(kind, onHit) };
   const el = $('actTiming');
   el.classList.remove('full');
-  el.querySelector('.act-cap').textContent = 'ながおし で ためて、ひかったら はなす！';
+  el.querySelector('.act-cap').textContent = 'ながおし で ためて、ピンク の ところ で はなす！';
   el.querySelector('.fill').style.width = '0%';
+  const cz = el.querySelector('.crit'); cz.style.left = `${ACT.critZone[0] * 100}%`; cz.style.width = `${(ACT.critZone[1] - ACT.critZone[0]) * 100}%`;
   el.hidden = false;
   stepTiming();
 };
+const critIn = (k) => k >= ACT.critZone[0] && k <= ACT.critZone[1];
 const holdSec = (T) => (T.hold == null ? 0 : (performance.now() - T.hold) / 1000);
 function stepTiming() {
   const T = ACT.timing;
   if (!T || T.done) return;
   const el = $('actTiming'), e = holdSec(T);
-  el.querySelector('.fill').style.width = `${Math.min(1, e / ACT.chargeSec) * 100}%`;
+  const k = Math.min(1, e / ACT.chargeSec);
+  el.querySelector('.fill').style.width = `${k * 100}%`;
   if (T.hold != null) {
-    const glow = e >= ACT.chargeSec;
+    const glow = critIn(k);
     if (glow && !T.full) { T.full = true; el.classList.add('full'); el.querySelector('.act-cap').textContent = '✨ いま はなして！ ✨'; [1319, 1760].forEach((f, i) => note(f, i * 0.05, 0.14, { type: 'sine', vol: 0.07 })); }
-    else if (!glow && T.hold != null && (T.tick = (T.tick || 0) + 1) % 6 === 0) note(500 + e / ACT.chargeSec * 700, 0, 0.05, { type: 'triangle', vol: 0.04 });
-    if (e > ACT.chargeSec + ACT.glowSec) { finishTiming(false, 'ためすぎ……ふつう'); return; }
+    else if (!glow && T.full) { el.classList.remove('full'); el.querySelector('.act-cap').textContent = 'ためすぎ……'; }
+    else if (!glow && (T.tick = (T.tick || 0) + 1) % 6 === 0) note(500 + k * 700, 0, 0.05, { type: 'triangle', vol: 0.04 });
+    if (k >= 1) { finishTiming(false, 'ためすぎ……ふつう'); return; }
   } else if ((performance.now() - T.t0) / 1000 >= ACT.timingSec) { finishTiming(false); return; }
   requestAnimationFrame(stepTiming);
 }
@@ -129,8 +133,8 @@ function timingDown() {
 function timingUp() {
   const T = ACT.timing;
   if (!T || T.done || T.hold == null) return;
-  const e = holdSec(T);
-  finishTiming(e >= ACT.chargeSec && e <= ACT.chargeSec + ACT.glowSec, e < ACT.chargeSec ? 'ふつう（もっと ためよう）' : 'ふつう');
+  const k = holdSec(T) / ACT.chargeSec;
+  finishTiming(critIn(k), k < ACT.critZone[0] ? 'ふつう（もっと ためよう）' : 'ためすぎ……ふつう');
 }
 function finishTiming(strong, msg = 'ふつう') {
   const T = ACT.timing;

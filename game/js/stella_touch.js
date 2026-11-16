@@ -60,14 +60,19 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
     jump.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       if (typeof audio === 'function') audio();
-      st = { x: e.clientX, y: e.clientY, fired: false };
+      st = { x: e.clientX, y: e.clientY, fired: false, climb: false };
       try { jump.setPointerCapture(e.pointerId); } catch { /* なにもしない */ }
+      // おしろ のぼり：おした しゅんかん に とぶ（十字ボタン と いっしょ に おせる）
+      if (typeof RG !== 'undefined' && RG.climb && typeof climbJump === 'function') { st.fired = st.climb = true; jump.classList.add('on'); climbJump(); }
     });
     jump.addEventListener('pointermove', (e) => {
-      if (!st || st.fired) return;
+      if (!st) return;
       const dx = e.clientX - st.x, dy = e.clientY - st.y;
       if (Math.hypot(dx, dy) < 22) return;
-      fire(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+      const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      if (st.climb) { st.climb = false; if (typeof climbFlickAir === 'function') climbFlickAir(dir); return; } // とんだ あと の フリック ＝ その むき へ
+      if (st.fired) return;
+      fire(dir);
     });
     const up = () => { if (!st) return; fire(null); st = null; jump.classList.remove('on'); };
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => jump.addEventListener(ev, up));
@@ -82,8 +87,16 @@ const ctlInDungeonWalk = () => S.mode === 'walk' && typeof inDungeon === 'functi
       down = true; touchKey('keydown', b.dataset.k);
       try { b.setPointerCapture(e.pointerId); } catch { /* なにもしない */ }
     });
-    const up = () => { if (!down) return; down = false; touchKey('keyup', b.dataset.k); };
+    const up = () => { if (!down) return; down = false; touchKey('keyup', b.dataset.k); if (b.slid) { touchKey('keyup', b.slid); b.slid = null; } };
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, up));
+    // 十字ボタン：ゆび を すべらせる と となり の むき に かわる
+    if (b !== ok) b.addEventListener('pointermove', (e) => {
+      if (!down) return;
+      const t = document.elementFromPoint(e.clientX, e.clientY), k = t && t.closest && t.closest('#stPad button') ? t.closest('#stPad button').dataset.k : null;
+      const cur = b.slid || b.dataset.k;
+      if (!k || k === cur) return;
+      touchKey('keyup', cur); touchKey('keydown', k); b.slid = k === b.dataset.k ? null : k;
+    });
     b.addEventListener('contextmenu', (e) => e.preventDefault()); // ながおし の メニューを ださない
   });
   itemBtn.addEventListener('click', () => { if (typeof audio === 'function') audio(); if (typeof openItemPanel === 'function') openItemPanel(); itemBtn.blur(); });

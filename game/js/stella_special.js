@@ -12,7 +12,7 @@
 //  stella_rogue.js の あと に よむ。しよう：docs/GAME_SPEC.md 14.7
 // =====================================================================
 
-const SP = { stage: 80 }; // 1だん に いる ほすう
+const SP = { stage: 65 }; // 1だん に いる ほすう
 RG_CONF.gaugeSteps = SP.stage * 3;
 const SP_MOVES = {
   heal:  { lv: 1, name: 'きらきら ヒール',       inner: null,     label: 'まる だけ',          desc: 'HP を ぜんぶ かいふく',               color: '#4ecbff', dur: 1.4 },

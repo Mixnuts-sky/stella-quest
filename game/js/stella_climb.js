@@ -50,7 +50,7 @@ function climbBuild(d) {
     let nx = cx + pick([-1, 1]) * rnd(120, 230);
     if (nx < w / 2 + 20 || nx > C.worldW - w / 2 - 20) nx = cx + (cx > C.worldW / 2 ? -1 : 1) * rnd(120, 230);
     nx = Math.max(w / 2 + 20, Math.min(C.worldW - w / 2 - 20, nx));
-    if (top) nx = C.worldW / 2;
+    if (top) nx = Math.max(C.worldW / 2 - 150, Math.min(C.worldW / 2 + 150, cx)); // てっぺん は まんなか よせ（まえ の あしば から かならず とどく）
     // つる：この あしば から 2だん うえ まで
     if (!top && r > 2 && r + 2 < n && Math.random() < 0.2) {
       const p = { x: nx - w / 2, w, y: rowY(r), kind: 'plain' };
@@ -110,6 +110,14 @@ function climbJump(dir) {
   if (!C || C.done) return;
   C.hero.buffer = CLIMB.buffer;
   C.hero.bufDir = dir === 'left' ? -1 : dir === 'right' ? 1 : dir ? 0 : null;
+}
+// ジャンプ ボタン を おして から フリック：そら に いる なら その むき へ（いま とぶ まえ なら とぶ むき）
+function climbFlickAir(dir) {
+  const C = RG.climb;
+  if (!C || C.done) return;
+  const h = C.hero, d = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+  if (h.buffer > 0) h.bufDir = d;
+  else if (!h.on && !h.climb) { h.airDir = d; if (d) h.facing = d; }
 }
 function climbUpdate(dt) {
   const C = RG.climb, K = CLIMB, h = C.hero;
