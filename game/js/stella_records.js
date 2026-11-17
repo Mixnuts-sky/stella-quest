@@ -162,9 +162,9 @@ function openZukan(tab = 'enemy') {
   } else if (tab === 'kanji') {
     const levels = {};
     KLIST.forEach((e) => [...e.word].filter(isKanji).forEach((ch) => { (levels[e.level] = levels[e.level] || new Set()).add(ch); }));
-    const all = Object.values(levels).reduce((s, x) => s + x.size, 0), got = Object.keys(z.kanji).length;
+    const all = new Set(Object.values(levels).flatMap((x) => [...x])).size, got = Object.keys(z.kanji).length;
     count = `${got} / ${all}`;
-    body = Object.keys(levels).sort().map((lv) => `<div class="zk-lv">なんいど ${lv}</div><div class="zk-chars">${[...levels[lv]].map((ch) => `<span class="${z.kanji[ch] ? 'on' : ''}">${ch}</span>`).join('')}</div>`).join('');
+    body = Object.keys(levels).sort().map((lv) => `<div class="zk-lv">${lv === 'main' ? 'メイン かんじ' : `なんいど ${lv}`}</div><div class="zk-chars">${[...levels[lv]].map((ch) => `<span class="${z.kanji[ch] ? 'on' : ''}">${ch}</span>`).join('')}</div>`).join('');
   } else {
     const all = [...UPPER, ...LOWER], got = all.filter((c) => z.abc[c]).length;
     count = `${got} / ${all.length}`;

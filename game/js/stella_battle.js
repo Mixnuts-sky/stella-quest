@@ -67,14 +67,14 @@ function askKanjiStella(m, lv) {
   const listLv = lv;
   let pool = KLIST.filter((e) => e.level === listLv);
   if (!pool.length) pool = KLIST;
-  const entry = pickEntry(pool), sentence = !!entry.sentence && Math.random() < KANJI_SENTENCE_RATE;
+  const entry = m.mainQ && m.mainQ.length ? m.mainQ[0] : pickEntry(pool), sentence = !!entry.sentence && Math.random() < KANJI_SENTENCE_RATE;
   const q = buildQuestion(entry, false, sentence);
   S.q = q; S.input = '';
-  $('monName').innerHTML = enemyLabel(m, KANJI_TAG[lv]) + subjTag('kanji');
+  $('monName').innerHTML = enemyLabel(m, m.mainQ ? `メイン かんじ のこり ${m.mainQ.length}` : KANJI_TAG[lv]) + subjTag('kanji');
   $('quiz').classList.toggle('boss', !!m.boss);
   $('qmsg').textContent = ''; $('qmsg').className = 'qmsg';
   $('nextBtn').hidden = true;
-  const guide = listLv >= 5 || S.hintNext ? 'trace' : 'none';
+  const guide = (listLv >= 5 && !m.mainQ) || S.hintNext ? 'trace' : 'none';
   S.hintNext = false;
   setMode('question');
   kanjiSetup(q, { guide, hint: false });
@@ -107,6 +107,7 @@ onSpellHit = function () {
   const m = S.monster;
   if (!ST.battle || !m || m.nanmon) { baseOnSpellHitStella(); return; }
   m.hits = (m.hits || 0) + 1;
+  if (m.mainQ) m.mainQ.shift(); // メイン かんじ：できた じ は もう でない
   if (m.boss) { // game.js は 1 ずつ へらすので、こうげきりょく ぶんに あわせる
     m.hp = Math.max(1, m.hp - heroAtk() + 1);
     baseOnSpellHitStella();
@@ -132,6 +133,7 @@ onEnemyAttackDone = function () {
     baseOnEnemyAttackDoneStella();
     return;
   }
+  if (m.mainQ && m.mainQ.length > 1) m.mainQ.push(m.mainQ.shift()); // メイン かんじ：まちがえた じ は あとで もういちど
   if (S.hp > 0) { m.state = 'idle'; askQuestion(); return; }
   baseOnEnemyAttackDoneStella();
 };
@@ -174,14 +176,27 @@ function startStellaBattle(opts) {
   if (m && opts.monster) Object.assign(m, opts.monster);
 }
 
-// アルトの まほうの れんしゅう：えらんだ なんいど・かもく で 3もん（ぜんぶ なら さんすう → かんじ → おんがく）
-//   てきの HP は 3 × こうげきりょく（つよい つえ でも 3もん）
+// アルトの まほうの れんしゅう：えらんだ なんいど・かもく で 5もん せいかい で クリア（ぜんぶ なら さんすう → かんじ → おんがく の じゅん）
+//   てきの HP は 5 × こうげきりょく（つよい つえ でも 5もん）。なんど でも できる
+//   かんじ の「メイン」：漢字リスト の メイン漢字 を ぜんぶ 1かい ずつ（じゅんばん は ランダム。まちがえた じ は あとで もういちど）
+//   クリア の ごほうび：ダンジョン より すこし すくない アルカ（GAME_SPEC.md 15.15）
+const PRACTICE_Q = 5;
+const mainKanjiList = () => KLIST.filter((e) => e.level === 'main');
+// ダンジョン の ざこ（2もん で ARCA_REWARD[なんいど][0]）の 8わり ぐらい
+const practiceReward = (diff, n) => Math.max(3, Math.round(ARCA_REWARD[Math.max(1, Math.min(6, diff))][0] * 0.4 * n));
 function startPractice(opts = {}) {
-  const subject = opts.subject || 'all';
+  const main = !!opts.main && mainKanjiList().length > 0, subject = main ? 'kanji' : opts.subject || 'all';
+  const mainQ = main ? shuffle(mainKanjiList().slice()) : null, n = main ? mainQ.length : PRACTICE_Q, diff = opts.difficulty || 1;
   startStellaBattle({
-    difficulty: opts.difficulty || 1, practice: true, returnTo: 'town', pos: { x: TW_HERO.x, y: TW_HERO.y },
-    monster: { name: 'れんしゅう スライム', hp: 3 * heroAtk(), maxHp: 3 * heroAtk(), seq: subject === 'all', ...(subject === 'all' ? {} : { subject, hkSubject: subject }) },
-    after: () => stDialog([['アルト', 'すばらしい！'], ['アルト', 'その ちょうしじゃ！']], () => { if (typeof practiceAgain === 'function') practiceAgain(); }),
+    difficulty: diff, practice: true, returnTo: 'town', pos: { x: TW_HERO.x, y: TW_HERO.y },
+    monster: { name: main ? 'メイン かんじ スライム' : 'れんしゅう スライム', hp: n * heroAtk(), maxHp: n * heroAtk(), seq: subject === 'all',
+      ...(subject === 'all' ? {} : { subject, hkSubject: subject }), ...(main ? { mainQ } : {}) },
+    after: () => {
+      const a = practiceReward(diff, n);
+      ST.data.arca += a; coinSound(); stRenderHud(); stSave();
+      stDialog([['アルト', main ? 'メイン かんじ を ぜんぶ かけたのう！ すばらしい！' : 'すばらしい！ クリアじゃ！'], ['アルト', `ごほうび に ${a} アルカ を あげよう。`], ['アルト', 'その ちょうしじゃ！']],
+        () => { if (typeof practiceAgain === 'function') practiceAgain(); });
+    },
   });
 }
 

@@ -72,32 +72,47 @@ function practiceSubjects() {
 function askPractice() {
   const top = Math.min(6, maxCleared(ST.data) + 1), hk = ST.data.mode === 'hoikuen';
   if (!PRACTICE.d || PRACTICE.d > top) PRACTICE.d = top; // はじめは つぎに いく ダンジョン の なんいど
+  const hasMain = !hk && typeof mainKanjiList === 'function' && mainKanjiList().length > 0;
+  if (PRACTICE.d === 'main' && (!hasMain || PRACTICE.s !== 'kanji')) PRACTICE.d = top;
   const dBtns = Array.from({ length: top }, (_, i) => i + 1).map((n) =>
-    `<button type="button" class="pr-d${n === PRACTICE.d ? ' on' : ''}" data-d="${n}"><b>${n}</b><small>${(typeof DUNGEONS !== 'undefined' && DUNGEONS[n]) || ''}</small></button>`).join('');
+    `<button type="button" class="pr-d${n === PRACTICE.d ? ' on' : ''}" data-d="${n}"><b>${n}</b><small>${(typeof DUNGEONS !== 'undefined' && DUNGEONS[n]) || ''}</small></button>`).join('')
+    + (hasMain ? `<button type="button" class="pr-d pr-main${PRACTICE.d === 'main' ? ' on' : ''}" data-d="main"${PRACTICE.s === 'kanji' ? '' : ' hidden'}><b>メイン</b><small>${mainKanjiList().length}こ ぜんぶ</small></button>` : '');
   const sBtns = practiceSubjects().map(([k, label]) => `<button type="button" class="pr-s${k === PRACTICE.s ? ' on' : ''}" data-s="${k}">${label}</button>`).join('');
   const p = stPanel(`<div class="shop-head"><span class="shop-title">🪄 まほうの れんしゅう</span></div>
-    <div class="shop-talk">「どの なんいど の、どの まほう を れんしゅう する？ HPは へらないぞ。」</div>
+    <div class="shop-talk">「どの なんいど の、どの まほう を れんしゅう する？ ${PRACTICE_Q}もん せいかい で クリア、ごほうび も あるぞ。HPは へらないぞ。」</div>
     ${hk ? '' : `<div class="pr-label">なんいど</div><div class="pr-row">${dBtns}</div>`}
     <div class="pr-label">まほう</div><div class="pr-row">${sBtns}</div>
     <div class="shop-foot two"><button type="button" class="buy go">はじめる！</button><button type="button" class="close">いまは いい</button></div>`);
   const pick = (sel, attr, key) => p.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => {
-    PRACTICE[key] = key === 'd' ? +b.dataset[attr] : b.dataset[attr];
+    PRACTICE[key] = key === 'd' && b.dataset[attr] !== 'main' ? +b.dataset[attr] : b.dataset[attr];
     p.querySelectorAll(sel).forEach((x) => x.classList.toggle('on', x === b));
+    // かんじ の とき だけ「メイン」を だす
+    const mb = p.querySelector('.pr-main');
+    if (key === 's' && mb) {
+      mb.hidden = PRACTICE.s !== 'kanji';
+      if (mb.hidden && PRACTICE.d === 'main') { PRACTICE.d = top; p.querySelectorAll('.pr-d').forEach((x) => x.classList.toggle('on', x.dataset.d === String(top))); }
+    }
     note(880, 0, 0.06, { type: 'sine', vol: 0.06 });
   }));
   pick('.pr-d', 'd', 'd'); pick('.pr-s', 's', 's');
-  p.querySelector('.go').addEventListener('click', () => { closePanelSilently(); startPractice({ difficulty: hk ? 1 : PRACTICE.d, subject: PRACTICE.s }); });
+  p.querySelector('.go').addEventListener('click', () => { closePanelSilently(); startPractice(practiceOpts()); });
   p.querySelector('.close').addEventListener('click', closePanel);
   p.querySelector('.close').focus(); // はじめは「いまは いい」（Enter を おしっぱなし でも はじまらない）
+}
+// えらんだ れんしゅう（メイン は かんじ・いま いける いちばん うえ の なんいど の ごほうび）
+function practiceOpts() {
+  const hk = ST.data.mode === 'hoikuen', top = Math.min(6, maxCleared(ST.data) + 1);
+  if (PRACTICE.d === 'main') return { difficulty: top, subject: 'kanji', main: true };
+  return { difficulty: hk ? 1 : PRACTICE.d, subject: PRACTICE.s };
 }
 // れんしゅう が おわったら：もういちど（おなじ）／ ほかの れんしゅう ／ おわる
 function practiceAgain() {
   const label = (practiceSubjects().find(([k]) => k === PRACTICE.s) || [])[1] || '';
   const hk = ST.data.mode === 'hoikuen';
-  const p = stPanel(`<div class="inn-ask">もういちど れんしゅう する？<small>${hk ? '' : `なんいど ${PRACTICE.d}・`}${label}</small></div>
+  const p = stPanel(`<div class="inn-ask">もういちど れんしゅう する？<small>${hk ? '' : PRACTICE.d === 'main' ? 'メイン・' : `なんいど ${PRACTICE.d}・`}${label}</small></div>
     <div class="shop-foot two"><button type="button" class="buy again">もういちど！</button><button type="button" class="other">ほかの れんしゅう</button><button type="button" class="close">おわる</button></div>`,
   () => stDialog([['アルト', 'よく がんばったのう。'], ['アルト', 'ダンジョンでも その ちょうしじゃ！']]));
-  p.querySelector('.again').addEventListener('click', () => { closePanelSilently(); startPractice({ difficulty: hk ? 1 : PRACTICE.d, subject: PRACTICE.s }); });
+  p.querySelector('.again').addEventListener('click', () => { closePanelSilently(); startPractice(practiceOpts()); });
   p.querySelector('.other').addEventListener('click', () => { closePanelSilently(); askPractice(); });
   p.querySelector('.close').addEventListener('click', closePanel);
   p.querySelector('.again').focus();
