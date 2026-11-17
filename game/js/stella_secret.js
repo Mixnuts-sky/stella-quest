@@ -13,7 +13,7 @@ const SECRET = { count: 0, lastAt: 0 };
 const SECRET_DEFAULT = { death: NECRO.chance, rare: CONFIG.rareRate, bonus: BONUS.rate };
 const SECRET_CHOICES = {
   death: [['ふつう（1%）', 0.01], ['10%', 0.1], ['30%', 0.3]],
-  rare: [['ふつう（10%）', 0.1], ['30%', 0.3]],
+  rare: [['ふつう（18%）', 0.1], ['3ばい（54%）', 0.3]], // しまじろう：かい ごと の かくりつ ＝ RG_CONF.shimaRate × あたい ÷ 0.1
   bonus: [['ふつう（12%）', 0.12], ['40%', 0.4]],
 };
 

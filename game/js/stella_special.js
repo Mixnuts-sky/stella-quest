@@ -396,6 +396,7 @@ function drawSpecialFx() {
 
 // キー：ダンジョン で Enter ＝ ひっさつ。かく がめん は Esc で とじる
 addEventListener('keydown', (e) => {
+  if (typeof GIVEUP !== 'undefined' && GIVEUP.open) return; // あきらめる の かくにん（stella_dash.js）
   if (RG.special) {
     if (e.key === 'Escape') { closeSpecial(); e.preventDefault(); }
     else if ((e.key === 'Enter' || e.code === 'NumpadEnter') && !e.repeat) { spJudge(); e.preventDefault(); }

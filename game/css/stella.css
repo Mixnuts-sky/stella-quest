@@ -350,6 +350,11 @@ body.touch .st-talk small { display: none; }
 .weak-go { background: #ffe8f1 !important; border-color: #e2588f !important; }
 .weak-tag { display: inline-block; font-size: 12px; color: #fff; background: #e2588f; border-radius: 999px; padding: 0 8px; }
 .st-zukan-btn { pointer-events: auto; margin-left: auto; }
+.st-giveup-btn { pointer-events: auto; margin-left: auto; }
+.st-giveup-btn:not([hidden]) ~ .st-title-btn { margin-left: 0; }
+.giveup-layer { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(30,10,60,.45); }
+.giveup-layer[hidden] { display: none; }
+.giveup-layer .st-card { max-width: min(92vw, 520px); }
 .st-zukan-btn + .st-title-btn { margin-left: 0; }
 .zk-body { max-height: 52vh; overflow-y: auto; }
 .zk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
@@ -393,6 +398,17 @@ html, body.stella { touch-action: manipulation; -webkit-text-size-adjust: 100%; 
 .act-bar.charge .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #ffd84a, #ff8a3c); }
 .act-bar.charge .crit { position: absolute; top: 0; bottom: 0; background: rgba(255,111,168,.28); border-left: 3px dashed #e2588f; border-right: 3px dashed #e2588f; }
 .act-timing.full .act-bar .crit { background: rgba(255,255,255,.45); }
+/* クリティカル：みぎ の まほうじん（どこ を おして も いい。めじるし）*/
+.act-circle { position: absolute; right: max(4vw, 18px); bottom: 10vh; width: min(30vh, 170px); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.act-circle .mc { width: 100%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(130,90,220,.92), rgba(40,20,90,.92)); border: 4px solid var(--ink); color: #ffe98a; box-shadow: 0 6px 0 rgba(30,10,60,.35), 0 0 18px 4px rgba(170,130,255,.55); display: flex; align-items: center; justify-content: center; }
+.act-circle .mc svg { width: 86%; height: 86%; animation: mcspin 6s linear infinite; }
+.act-circle span { font-weight: 900; font-size: 15px; color: var(--ink); background: rgba(255,250,243,.95); border: 3px solid var(--ink); border-radius: 999px; padding: 2px 12px; white-space: nowrap; }
+.act-timing.hold .act-circle .mc { transform: translateY(4px) scale(.96); box-shadow: 0 2px 0 rgba(30,10,60,.35), 0 0 26px 8px rgba(170,130,255,.8); }
+.act-timing.hold .act-circle .mc svg { animation-duration: 1.2s; }
+.act-timing.full .act-circle .mc { background: radial-gradient(circle, #fff6c0, #ff9fd0 60%, #b05ae0); color: #fff; box-shadow: 0 0 0 5px #fff3a0, 0 0 40px 16px #ffd84a; }
+.act-timing.full .act-circle span { background: #fff3a0; }
+@keyframes mcspin { to { transform: rotate(360deg); } }
+@media (max-height: 430px) { .act-circle { width: 120px; bottom: 6vh; } .act-circle span { font-size: 13px; } }
 .act-timing.full .act-bar { box-shadow: 0 0 0 5px #fff3a0, 0 0 34px 12px #ffd84a; animation: nudge .3s ease-in-out infinite; }
 .act-timing.full .act-bar .fill { background: linear-gradient(90deg, #fff3a0, #ffd84a, #ff6fa8); }
 .act-dodge { align-items: flex-start; padding-top: 9vh; background: rgba(255,60,90,.06); }

@@ -158,7 +158,7 @@ function battleUseItem(i) {
 
 // キー：I で ひらく、ひらいている あいだ は ←→↑↓ で えらぶ・Enter で つかう・Esc で とじる
 addEventListener('keydown', (e) => {
-  if (!ST.data) return;
+  if (!ST.data || (typeof GIVEUP !== 'undefined' && GIVEUP.open)) return; // あきらめる の かくにん（stella_dash.js）
   if (ITEMUI.open) {
     const n = ST.data.items.length, cols = 4;
     const mv = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.code];

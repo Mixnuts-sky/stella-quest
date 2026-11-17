@@ -177,5 +177,49 @@ leaveDungeon = function (...a) {
   return r;
 };
 
+// ---------------------------------------------------------------------
+//  ダンジョン を あきらめる（HUD の「🏳 あきらめる」）。きかんの はね と おなじ で まち に かえる（アイテム・アルカ は そのまま）
+//  しよう：docs/GAME_SPEC.md 15.16
+// ---------------------------------------------------------------------
+const GIVEUP = { open: false };
+(function giveupButton() {
+  const b = document.createElement('button');
+  b.id = 'giveupBtn'; b.type = 'button'; b.className = 'hud-btn st-giveup-btn'; b.textContent = '🏳 あきらめる'; b.hidden = true;
+  const z = $('zukanBtn') || $('stMenuBtn');
+  z.insertAdjacentElement('beforebegin', b);
+  const lay = document.createElement('div');
+  lay.id = 'giveupAsk'; lay.className = 'giveup-layer'; lay.hidden = true;
+  lay.innerHTML = `<div class="st-card"><div class="inn-ask">ダンジョン を あきらめて まち に かえる？<small>もちもの と アルカ は そのまま。つぎ は さいしょ の かい から だよ</small></div>
+    <div class="shop-foot two"><button type="button" class="buy yes">かえる</button><button type="button" class="close no">まだ がんばる</button></div></div>`;
+  $('game').appendChild(lay);
+  const can = () => !!(ST.data && typeof inDungeon === 'function' && inDungeon() && S.mode === 'walk' && !S.monster
+    && !(typeof RG !== 'undefined' && RG.special) && !(typeof ITEMUI !== 'undefined' && ITEMUI.open));
+  const close = () => { GIVEUP.open = false; lay.hidden = true; if (typeof heldDirs !== 'undefined') heldDirs.length = 0; };
+  const open = () => { if (!can() || GIVEUP.open) return; GIVEUP.open = true; lay.hidden = false; if (typeof heldDirs !== 'undefined') heldDirs.length = 0; lay.querySelector('.no').focus({ preventScroll: true }); };
+  const yes = () => {
+    close();
+    SFX.star();
+    leaveDungeon('giveup');
+    stDialog(['ダンジョン を あとに した……', 'ルミナリアの まちへ もどった。また ちょうせん しよう！']);
+  };
+  b.addEventListener('click', () => { if (typeof audio === 'function') audio(); open(); b.blur(); });
+  lay.querySelector('.yes').addEventListener('click', yes);
+  lay.querySelector('.no').addEventListener('click', close);
+  // ひらいて いる あいだ は ほか の キー を とめる（← → で えらぶ・Enter で きめる・Esc で とじる）
+  addEventListener('keydown', (e) => {
+    if (!GIVEUP.open) return;
+    const btns = [...lay.querySelectorAll('button')], i = btns.indexOf(document.activeElement);
+    if (e.key === 'Escape') close();
+    else if (/Arrow(Left|Right|Up|Down)/.test(e.key)) btns[(i + 1) % 2].focus({ preventScroll: true });
+    else if ((e.key === 'Enter' || e.code === 'Space') && !e.repeat) (document.activeElement === btns[0] ? yes : close)();
+    e.preventDefault(); e.stopImmediatePropagation();
+  }, true);
+  addEventListener('keyup', (e) => { if (GIVEUP.open) e.stopImmediatePropagation(); }, true);
+  setInterval(() => { b.hidden = !can() && !GIVEUP.open; if (GIVEUP.open && !inDungeon()) close(); }, 200);
+})();
+// ひらいて いる あいだ は おしろ のぼり も とまる
+if (typeof climbUpdate === 'function') { const baseClimbUpdateGiveup = climbUpdate; climbUpdate = function (dt) { if (GIVEUP.open) return; baseClimbUpdateGiveup(dt); }; }
+window.giveupTest = { open: () => $('giveupBtn').click(), isOpen: () => GIVEUP.open };
+
 // テスト よう
 window.dashTest = { dash: rgDash, stamina: () => staminaOf(), set(n) { ST.data.stamina = n; } };

@@ -40,7 +40,8 @@ const actOn = () => !!(ST.battle && !ST.battle.practice && S.monster && !S.monst
 // ---------------------------------------------------------------------
 (function buildActionUi() {
   const add = (id, cls, html = '') => { const d = document.createElement('div'); d.id = id; d.className = cls; d.hidden = true; d.innerHTML = html; $('game').appendChild(d); return d; };
-  add('actTiming', 'act-layer act-timing', '<div class="act-box"><div class="act-cap">ながおし で ためて、ピンク の ところ で はなす！</div><div class="act-bar charge"><i class="fill"></i><i class="crit"></i></div></div>');
+  add('actTiming', 'act-layer act-timing', '<div class="act-box"><div class="act-cap">ながおし で ためて、ピンク の ところ で はなす！</div><div class="act-bar charge"><i class="fill"></i><i class="crit"></i></div></div>'
+    + '<div class="act-circle"><div class="mc"><svg viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linejoin="round"><circle cx="50" cy="50" r="46" stroke-width="3"/><circle cx="50" cy="50" r="38" stroke-width="2" stroke-dasharray="4 5"/><circle cx="50" cy="50" r="30" stroke-width="2.5"/><path d="M50 20 L67.6 74.3 L21.5 40.7 L78.5 40.7 L32.4 74.3 Z" stroke-width="2.5"/></g><g fill="currentColor"><circle cx="50" cy="4" r="3"/><circle cx="96" cy="50" r="3"/><circle cx="50" cy="96" r="3"/><circle cx="4" cy="50" r="3"/></g></svg></div><span>ここ を ながおし</span></div>');
   add('actDodge', 'act-layer act-dodge', '<div class="act-box"><div class="act-cap">こうげき が くる！</div><div class="act-arrow">❗</div></div>');
   add('actMash', 'act-layer act-mash', '<div class="act-box"><div class="act-cap">おおわざ が くる！ れんだ で バリア！</div><div class="act-count">0</div><div class="act-meter"><i></i></div></div>');
   add('actAim', 'act-layer act-aim', '<div class="act-box top"><div class="act-cap">ひっぱって はなして とどめ！</div><small>ちゅなちゃん から うしろ へ ひっぱる → はなす と とんでいく</small></div><canvas id="actAimCv"></canvas>');
@@ -129,6 +130,7 @@ function timingDown() {
   const T = ACT.timing;
   if (!T || T.done || T.hold != null) return;
   T.hold = performance.now();
+  $('actTiming').classList.add('hold');
 }
 function timingUp() {
   const T = ACT.timing;
@@ -139,7 +141,7 @@ function timingUp() {
 function finishTiming(strong, msg = 'ふつう') {
   const T = ACT.timing;
   T.done = true; ACT.timing = null;
-  $('actTiming').hidden = true; $('actTiming').classList.remove('full');
+  $('actTiming').hidden = true; $('actTiming').classList.remove('full', 'hold');
   ACT.mult = strong ? 2 : 1;
   if (strong) { actPop('つよい！ ダメージ 2ばい！', '#e2588f', 'crit'); [988, 1318, 1760].forEach((f, i) => note(f, i * 0.06, 0.2, { type: 'square', vol: 0.07 })); }
   else actPop(msg, '#7a6890');
